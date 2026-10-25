@@ -1,0 +1,140 @@
+import { Campaign } from '../types';
+
+export const INITIAL_CAMPAIGNS: Campaign[] = [
+  // Chương trình A: “Đặt qua Quà Tặng VIP — giảm thêm 10%”
+  {
+    id: 'camp_vip10',
+    code: 'VIP10',
+    name: 'Đặt qua Quà Tặng VIP — Giảm thêm 10%',
+    shortTag: 'Giảm 10%',
+    description: 'Giảm 10% giá trị hợp lệ cho đơn từ 1.000.000đ, tối đa 300.000đ/đơn. Áp dụng cho các sản phẩm đối tác được gắn cờ.',
+    discountType: 'percentage',
+    discountValue: 10,
+    maxDiscount: 300000,
+    minOrderValue: 1000000,
+    eligibleCategories: ['stay', 'activity', 'bus_train'],
+    eligiblePartnerNames: ['Traveloka', 'Trip.com', 'Klook', 'Vexere'],
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    usageLimitPerUser: 1,
+    totalBudgetRemaining: 450000000,
+    isActive: true,
+    canStackWithOthers: true,
+    badgeColor: 'bg-emerald-600 text-white'
+  },
+  // Chương trình B: “Chào chuyến đi đầu tiên” - Mã VIPFIRST
+  {
+    id: 'camp_vipfirst',
+    code: 'VIPFIRST',
+    name: 'Chào chuyến đi đầu tiên',
+    shortTag: 'Giảm 150K',
+    description: 'Giảm ngay 150.000đ cho đơn đầu tiên đủ điều kiện từ 1.500.000đ dành cho khách hàng chưa có đơn hoàn tất trên hệ thống.',
+    discountType: 'fixed_amount',
+    discountValue: 150000,
+    minOrderValue: 1500000,
+    requiresFirstOrder: true,
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    usageLimitPerUser: 1,
+    totalBudgetRemaining: 200000000,
+    isActive: true,
+    canStackWithOthers: false,
+    badgeColor: 'bg-blue-600 text-white'
+  },
+  // Chương trình C: “Cuối tuần cùng gia đình” - Mã FAMILY200
+  {
+    id: 'camp_family200',
+    code: 'FAMILY200',
+    name: 'Cuối tuần cùng gia đình',
+    shortTag: 'Giảm 200K Lưu Trú',
+    description: 'Giảm 200.000đ cho phần lưu trú đủ điều kiện từ 2.000.000đ khi đi cùng gia đình hoặc đặt kỳ nghỉ cuối tuần.',
+    discountType: 'fixed_amount',
+    discountValue: 200000,
+    minOrderValue: 2000000,
+    eligibleCategories: ['stay'],
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    usageLimitPerUser: 2,
+    totalBudgetRemaining: 300000000,
+    isActive: true,
+    canStackWithOthers: true,
+    badgeColor: 'bg-amber-500 text-slate-900'
+  },
+  // Chương trình D: “Thêm vui cho hành trình”
+  {
+    id: 'camp_attraction15',
+    code: 'VUIHE15',
+    name: 'Thêm vui cho hành trình — Giảm 15% Vé Tham Quan',
+    shortTag: 'Giảm 15% Vui Chơi',
+    description: 'Giảm 15% vé tham quan & hoạt động đủ điều kiện, mức giảm tối đa 100.000đ/đơn.',
+    discountType: 'percentage',
+    discountValue: 15,
+    maxDiscount: 100000,
+    minOrderValue: 300000,
+    eligibleCategories: ['activity'],
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    usageLimitPerUser: 3,
+    totalBudgetRemaining: 150000000,
+    isActive: true,
+    canStackWithOthers: true,
+    badgeColor: 'bg-indigo-600 text-white'
+  },
+  // Chương trình E: “Đặt dịch vụ — nhận quà mua sắm”
+  {
+    id: 'camp_reward_shop100',
+    code: 'DMXGIFT100',
+    name: 'Đặt dịch vụ — Nhận phiếu mua sắm Điện Máy Xanh 100.000đ',
+    shortTag: 'Tặng Phiếu 100K',
+    description: 'Tặng phiếu mua hàng Điện Máy Xanh 100.000đ sau khi hoàn tất sử dụng dịch vụ. (Phiếu được cấp vào mục Quà Tặng sau chuyến đi, không trừ trực tiếp vào đơn hiện tại).',
+    discountType: 'fixed_amount',
+    discountValue: 0, // Không trừ vào đơn hiện tại
+    rewardShoppingVoucher: 100000,
+    minOrderValue: 1200000,
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    usageLimitPerUser: 2,
+    totalBudgetRemaining: 500000000,
+    isActive: true,
+    canStackWithOthers: true,
+    badgeColor: 'bg-rose-500 text-white'
+  },
+  // Chương trình F: “Ngày thành viên” (Member Tier Day)
+  {
+    id: 'camp_member_tier',
+    code: 'GOLDDIAMOND',
+    name: 'Ưu đãi đặc quyền Hạng Vàng & Kim Cương',
+    shortTag: 'Đặc quyền VIP',
+    description: 'Giảm thêm 5% (tối đa 250.000đ) dành riêng cho hội viên Quà Tặng VIP hạng Gold và Diamond.',
+    discountType: 'percentage',
+    discountValue: 5,
+    maxDiscount: 250000,
+    minOrderValue: 800000,
+    memberTierRequired: 'Gold',
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    usageLimitPerUser: 2,
+    totalBudgetRemaining: 120000000,
+    isActive: true,
+    canStackWithOthers: false,
+    badgeColor: 'bg-yellow-400 text-slate-900'
+  },
+  // Chương trình G: Ưu đãi thanh toán đối tác
+  {
+    id: 'camp_payment_paylater',
+    code: 'PAYLATER50',
+    name: 'Ưu đãi Ví Trả Chậm MWG PayLater — Giảm 50K',
+    shortTag: 'PayLater -50K',
+    description: 'Giảm ngay 50.000đ khi thanh toán qua MWG PayLater 0% lãi suất trong 90 ngày cho đơn từ 500.000đ.',
+    discountType: 'fixed_amount',
+    discountValue: 50000,
+    minOrderValue: 500000,
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    usageLimitPerUser: 3,
+    totalBudgetRemaining: 80000000,
+    isActive: true,
+    canStackWithOthers: true,
+    badgeColor: 'bg-sky-600 text-white'
+  }
+];
