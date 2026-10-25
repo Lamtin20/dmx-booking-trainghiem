@@ -216,73 +216,74 @@ export const TripsTab: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
             {/* Modal Header */}
-            <div className="bg-[#0074C8] text-white p-4 flex items-center justify-between">
+            <div className="bg-[#0071AF] text-white p-4 flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase font-bold text-sky-200">Chi tiết chuyến đi & Vé điện tử Demo</div>
-                <h3 className="font-mono font-bold text-sm">{selectedOrder.orderNumber}</h3>
+                <div className="text-[11px] font-semibold text-white/80">Chi tiết chuyến đi & Vé điện tử</div>
+                <h3 className="font-mono font-bold text-base text-white">{selectedOrder.orderNumber}</h3>
               </div>
               <button onClick={() => setSelectedOrder(null)} className="p-1 rounded-full hover:bg-white/20 transition cursor-pointer">
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 font-sans">
               {/* Status Banner */}
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center gap-2.5">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                 <div className="text-xs">
-                  <div className="font-bold text-emerald-900">Đơn hàng đã được xác nhận từ đối tác</div>
-                  <div className="text-emerald-700 text-[11px]">Toàn bộ vé demo đã sẵn sàng để check-in.</div>
+                  <div className="font-bold text-emerald-900">Đơn hàng đã được xác nhận thành công</div>
+                  <div className="text-emerald-700 text-[11px]">Toàn bộ vé điện tử đã sẵn sàng để xuất trình check-in.</div>
                 </div>
               </div>
 
               {/* Passenger Info */}
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs space-y-1">
-                <div className="font-bold text-slate-700 text-[11px] uppercase">Thông tin hành khách:</div>
+                <div className="font-bold text-slate-700 text-[11px] uppercase tracking-wider">Thông tin người liên hệ:</div>
                 <div className="text-slate-800 font-semibold">{selectedOrder.userName} • {selectedOrder.userPhone}</div>
               </div>
 
-              {/* Sub-orders with Barcodes & QR */}
+              {/* Sub-orders with Boarding Pass Design */}
               <div className="space-y-3">
                 <div className="font-bold text-slate-700 text-xs uppercase tracking-wider">
                   Vé & Chứng từ dịch vụ ({selectedOrder.subOrders.length}):
                 </div>
 
                 {selectedOrder.subOrders.map((sub, idx) => (
-                  <div key={idx} className="bg-white rounded-2xl p-3.5 border-2 border-dashed border-sky-300 shadow-2xs space-y-2.5">
-                    <div className="flex items-start justify-between">
+                  <div key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-0">
+                    {/* Top Ticket Header */}
+                    <div className="p-3.5 bg-slate-50/70 border-b border-slate-100 flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-slate-900">{sub.items[0]?.title}</span>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#0074C8] text-white">
+                          <span className="font-bold text-xs sm:text-sm text-[#1D2129]">{sub.items[0]?.title}</span>
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#0071AF] text-white">
                             {sub.partnerName}
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">{sub.items[0]?.subtitle}</div>
                       </div>
-                      <Ticket className="w-5 h-5 text-sky-600 shrink-0" />
+                      <Ticket className="w-5 h-5 text-[#0071AF] shrink-0" />
                     </div>
 
-                    {/* Simulated QR Code Card */}
-                    <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-between gap-3 border border-slate-200">
+                    {/* Ticket Body with QR & Codes */}
+                    <div className="p-3.5 flex items-center justify-between gap-3 bg-white">
                       <div>
-                        <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">Mã xác nhận đối tác</div>
-                        <div className="font-mono font-black text-sm text-sky-800 tracking-wider">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Mã xác nhận đối tác</div>
+                        <div className="font-mono font-black text-base text-[#0071AF] tracking-wider mt-0.5">
                           {sub.partnerConfirmationCode}
                         </div>
-                        <div className="text-[10px] text-slate-500 mt-1">
-                          {sub.demoTicket?.instructions || 'Xuất trình mã này tại quầy đối tác.'}
+                        <div className="text-[11px] text-slate-600 mt-1">
+                          {sub.demoTicket?.instructions || 'Xuất trình mã QR tại quầy để làm thủ tục.'}
                         </div>
                       </div>
 
                       {/* Mock QR visual */}
-                      <div className="w-14 h-14 bg-white p-1 rounded-lg border border-slate-300 flex items-center justify-center shrink-0">
-                        <QrCode className="w-12 h-12 text-slate-900" />
+                      <div className="w-16 h-16 bg-white p-1 rounded-xl border border-slate-300 flex items-center justify-center shrink-0 shadow-2xs">
+                        <QrCode className="w-14 h-14 text-slate-900" />
                       </div>
                     </div>
 
-                    <div className="text-[9px] text-center text-slate-400 italic">
-                      DEMO ONLY • Mã mô phỏng kiểm thử giao diện
+                    <div className="bg-slate-50/60 py-1.5 text-center text-[9px] text-slate-400 font-mono border-t border-slate-100">
+                      MÃ VÉ ĐIỆN TỬ: {sub.demoTicket?.ticketCode || 'DMX-TICKET-OK'}
                     </div>
                   </div>
                 ))}

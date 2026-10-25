@@ -50,32 +50,20 @@ export const DeviceFrameWrapper: React.FC<DeviceFrameWrapperProps> = ({ children
   // Nếu người dùng đang mở trực tiếp trên điện thoại (iPhone hoặc Android), tự động hiển thị 100% Native Fullscreen!
   if (isMobileScreen) {
     return (
-      <div className="w-full min-h-screen bg-white text-slate-900 flex flex-col font-sans antialiased">
-        {/* Floating Switch Bar for Mobile */}
-        <div className="bg-slate-900 text-white text-[10px] px-3 py-1 flex items-center justify-between z-50">
-          <div className="flex items-center gap-1.5 font-bold text-amber-300">
-            <span>Quà Tặng VIP • {activePersona.honorific} {activePersona.name}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsInsideMiniApp(!isInsideMiniApp)}
-              className="px-2 py-0.5 rounded bg-sky-600 text-white font-bold"
-            >
-              {isInsideMiniApp ? 'Về App Chủ' : 'Mở Mini App'}
-            </button>
-            <button
-              onClick={() => setShowControlCenter(true)}
-              className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-bold"
-            >
-              Control Center
-            </button>
-          </div>
-        </div>
-
-        {/* Screen Content */}
-        <div className="flex-1 overflow-y-auto">
+      <div className="w-full min-h-screen bg-[#F4F6F8] text-[#1D2129] flex flex-col font-sans antialiased">
+        {/* Screen Content - Fullscreen chuẩn Native Mobile App */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </div>
+
+        {/* Floating Quick Control Button: Nút tròn nhỏ tinh tế ở góc trái, không chiếm diện tích */}
+        <button
+          onClick={() => setShowControlCenter(true)}
+          className="fixed bottom-6 left-4 z-40 w-8 h-8 rounded-full bg-slate-900/60 backdrop-blur text-white flex items-center justify-center text-[10px] shadow-lg border border-white/20 opacity-40 hover:opacity-100 transition cursor-pointer"
+          title="Mở Control Center kiểm thử"
+        >
+          ⚙️
+        </button>
 
         {/* Toast */}
         {toastMessage && (

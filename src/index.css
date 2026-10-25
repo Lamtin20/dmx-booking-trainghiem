@@ -2,30 +2,33 @@
 
 @layer base {
   :root {
-    --color-dmx-blue: #0074C8;
-    --color-dmx-blue-dark: #005A9E;
-    --color-dmx-blue-light: #EBF5FF;
-    --color-dmx-yellow: #FFB800;
-    --color-dmx-yellow-hover: #E5A600;
-    --color-dmx-yellow-light: #FEF9C3;
-    --color-dmx-text: #123653;
+    --color-dmx-blue: #0071AF;
+    --color-dmx-blue-hover: #005E93;
+    --color-dmx-blue-light: #EBF4FC;
+    --color-dmx-yellow: #FED100;
+    --color-dmx-yellow-hover: #E5BC00;
+    --color-dmx-yellow-light: #FFFBE5;
+    --color-dmx-red: #E11B1E;
+    --color-dmx-text: #1D2129;
+    --color-dmx-bg: #F4F6F8;
   }
 
   body {
-    background-color: #F1F5F9;
-    color: #1E293B;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #F4F6F8;
+    color: #1D2129;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
   }
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

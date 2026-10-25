@@ -207,136 +207,88 @@ export const ExploreTab: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart })
   };
 
   return (
-    <div className="w-full min-h-full bg-slate-50 flex flex-col pb-24">
-      {/* 1. Hero Chatbot CTA Card */}
-      <div className="px-4 pt-3">
+    <div className="w-full min-h-full bg-[#F4F6F8] flex flex-col pb-24 font-sans">
+      {/* 1. Hero Banner chuẩn phong cách Điện Máy Xanh */}
+      <div className="px-3.5 pt-3">
         <div 
           onClick={() => setActiveTab('planner')}
-          className="bg-gradient-to-r from-[#0074C8] via-[#005A9E] to-sky-700 text-white rounded-3xl p-4 shadow-md relative overflow-hidden cursor-pointer hover:shadow-lg transition group"
+          className="bg-gradient-to-r from-[#0071AF] via-[#0082CA] to-[#009AE0] text-white rounded-2xl p-4 shadow-sm relative overflow-hidden cursor-pointer hover:shadow-md transition group"
         >
-          <div className="relative z-10">
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-[#FFDF00] text-[#123653] uppercase tracking-wider inline-flex items-center gap-1">
-              <Bot className="w-3 h-3 text-[#123653]" />
-              Chatbot Du Lịch 1 Chạm
+          <div className="relative z-10 max-w-[85%]">
+            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-[#FED100] text-[#1D2129] uppercase tracking-wider inline-flex items-center gap-1">
+              <Bot className="w-3 h-3 text-[#1D2129]" />
+              Đặc quyền Quà Tặng VIP • Giảm 10%
             </span>
-            <div className="font-black text-sm sm:text-base mt-2 text-white leading-tight">
-              Trò chuyện cùng Chatbot, chuẩn bị chuyến đi trọn gói theo ý bạn!
+            <div className="font-bold text-base sm:text-lg mt-2 text-white leading-tight">
+              Chuyến đi theo ý bạn • Tư vấn bởi AI
             </div>
-            <p className="text-[11px] text-sky-100 mt-1 max-w-xs">
-              Tự động gợi ý phòng, vé xe FUTA, vé bay và hoạt động phù hợp ngân sách trong nháy mắt.
+            <p className="text-[11px] text-white/90 mt-1">
+              Khách sạn, vé xe Phương Trang FUTA, chuyến bay & tour vui chơi giá tốt nhất.
             </p>
-            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-[#0074C8] font-bold text-xs shadow-xs group-hover:bg-amber-300 group-hover:text-slate-950 transition">
-              <Bot className="w-3.5 h-3.5 text-[#0074C8] group-hover:text-slate-950" />
-              <span>Hỏi Chatbot ngay</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+            <div className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-black text-xs shadow-xs transition">
+              <span>Trò chuyện cùng Chatbot</span>
+              <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
             </div>
-          </div>
-          <div className="absolute right-0 bottom-0 w-32 h-32 opacity-15 pointer-events-none flex items-center justify-center">
-            <Bot className="w-28 h-28 text-white" />
           </div>
         </div>
       </div>
 
-      {/* 2. Category Quick Filters */}
-      <div className="px-4 mt-4">
-        <div className="grid grid-cols-5 gap-1.5 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-2xs text-center text-[10px]">
-          <button
-            onClick={() => setActiveServiceCategory(null)}
-            className={`flex flex-col items-center py-2 px-1 rounded-xl transition cursor-pointer ${
-              activeServiceCategory === null
-                ? 'bg-sky-50 text-[#0074C8] font-bold ring-1 ring-[#0074C8]/30'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-1 text-slate-700">
-              🌟
-            </div>
-            <span>Tất cả</span>
-          </button>
-
-          <button
-            onClick={() => setActiveServiceCategory('stay')}
-            className={`flex flex-col items-center py-2 px-1 rounded-xl transition cursor-pointer ${
-              activeServiceCategory === 'stay'
-                ? 'bg-sky-50 text-[#0074C8] font-bold ring-1 ring-[#0074C8]/30'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-[#0074C8] flex items-center justify-center mb-1">
-              <Building2 className="w-4 h-4" />
-            </div>
-            <span>Khách sạn</span>
-          </button>
-
-          <button
-            onClick={() => setActiveServiceCategory('flight')}
-            className={`flex flex-col items-center py-2 px-1 rounded-xl transition cursor-pointer ${
-              activeServiceCategory === 'flight'
-                ? 'bg-sky-50 text-[#0074C8] font-bold ring-1 ring-[#0074C8]/30'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mb-1">
-              <Plane className="w-4 h-4" />
-            </div>
-            <span>Máy bay</span>
-          </button>
-
-          <button
-            onClick={() => setActiveServiceCategory('bus_train')}
-            className={`flex flex-col items-center py-2 px-1 rounded-xl transition cursor-pointer ${
-              activeServiceCategory === 'bus_train'
-                ? 'bg-sky-50 text-[#0074C8] font-bold ring-1 ring-[#0074C8]/30'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mb-1">
-              <Bus className="w-4 h-4" />
-            </div>
-            <span>Xe & Tàu</span>
-          </button>
-
-          <button
-            onClick={() => setActiveServiceCategory('activity')}
-            className={`flex flex-col items-center py-2 px-1 rounded-xl transition cursor-pointer ${
-              activeServiceCategory === 'activity'
-                ? 'bg-sky-50 text-[#0074C8] font-bold ring-1 ring-[#0074C8]/30'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mb-1">
-              <Camera className="w-4 h-4" />
-            </div>
-            <span>Vui chơi</span>
-          </button>
+      {/* 2. Ngành hàng dịch vụ chuẩn e-commerce Điện Máy Xanh */}
+      <div className="px-3.5 mt-3.5">
+        <div className="grid grid-cols-5 gap-2 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs text-center text-xs">
+          {[
+            { id: null, label: 'Tất cả', icon: '🌟', bg: 'bg-amber-50 text-amber-600' },
+            { id: 'stay', label: 'Khách sạn', icon: '🏨', bg: 'bg-blue-50 text-[#0071AF]' },
+            { id: 'flight', label: 'Máy bay', icon: '✈️', bg: 'bg-sky-50 text-sky-600' },
+            { id: 'bus_train', label: 'Xe khách', icon: '🚌', bg: 'bg-orange-50 text-orange-600' },
+            { id: 'activity', label: 'Vui chơi', icon: '🎡', bg: 'bg-emerald-50 text-emerald-600' }
+          ].map((cat) => {
+            const isSelected = activeServiceCategory === cat.id;
+            return (
+              <button
+                key={cat.label}
+                onClick={() => setActiveServiceCategory(cat.id as any)}
+                className={`flex flex-col items-center py-1.5 px-0.5 rounded-xl transition cursor-pointer ${
+                  isSelected
+                    ? 'bg-sky-50 text-[#0071AF] font-bold ring-1.5 ring-[#0071AF]'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-xl ${cat.bg} flex items-center justify-center text-base mb-1 shadow-2xs`}>
+                  {cat.icon}
+                </div>
+                <span className="text-[11px] font-medium leading-tight">{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* 3. Search Bar & Destination Filter */}
-      <div className="px-4 mt-3 space-y-2">
-        <div className="bg-white rounded-2xl px-3 py-2 flex items-center gap-2 border border-slate-200 shadow-2xs">
-          <Search className="w-4 h-4 text-slate-400" />
+      <div className="px-3.5 mt-3 space-y-2">
+        <div className="bg-white rounded-xl px-3 py-2 flex items-center gap-2 border border-slate-200 shadow-2xs focus-within:border-[#0071AF] focus-within:ring-1 focus-within:ring-[#0071AF] transition">
+          <Search className="w-4 h-4 text-[#0071AF]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo tên khách sạn, địa điểm, hãng xe..."
-            className="w-full text-xs text-slate-800 outline-none placeholder:text-slate-400"
+            className="w-full text-xs text-[#1D2129] outline-none placeholder:text-slate-400 font-normal"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="p-0.5 text-slate-400 hover:text-slate-600">
+            <button onClick={() => setSearchQuery('')} className="p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
         {/* Destination Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
             onClick={() => setSelectedDestinationId('all')}
             className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
               selectedDestinationId === 'all'
-                ? 'bg-[#0074C8] text-white shadow-xs'
+                ? 'bg-[#0071AF] text-white shadow-xs'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -348,7 +300,7 @@ export const ExploreTab: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart })
               onClick={() => setSelectedDestinationId(d.id)}
               className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 selectedDestinationId === d.id
-                  ? 'bg-[#0074C8] text-white shadow-xs'
+                  ? 'bg-[#0071AF] text-white shadow-xs'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
@@ -359,19 +311,19 @@ export const ExploreTab: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart })
       </div>
 
       {/* 4. Active Catalog List */}
-      <div className="px-4 mt-4 space-y-5">
+      <div className="px-3.5 mt-3.5 space-y-4">
         {/* SECTION 1: LƯU TRÚ (HOTELS / RESORTS) */}
         {(activeServiceCategory === null || activeServiceCategory === 'stay') && (
           <div>
-            <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center justify-between mb-2">
               <div>
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-[#0074C8]" />
+                <h2 className="text-sm font-bold text-[#1D2129] flex items-center gap-1.5">
+                  <span className="w-2 h-4 rounded-xs bg-[#0071AF] inline-block" />
                   <span>Khách sạn & Resort nổi bật</span>
                 </h2>
-                <span className="text-[10px] text-slate-400">Giá rõ ràng, miễn phí ăn sáng, thang máy</span>
+                <span className="text-[11px] text-slate-500">Giá rõ ràng, miễn phí ăn sáng buffet, thang máy</span>
               </div>
-              <span className="text-xs font-bold text-sky-600">{filteredStays.length} cơ sở</span>
+              <span className="text-xs font-bold text-[#0071AF]">{filteredStays.length} cơ sở</span>
             </div>
 
             {filteredStays.length === 0 ? (
@@ -383,14 +335,16 @@ export const ExploreTab: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart })
                 {filteredStays.map((stay) => {
                   const isSaved = wishlistIds.includes(stay.id);
                   const minPrice = Math.min(...stay.rooms.map(r => r.pricePerNight));
+                  const originalPrice = Math.round(minPrice * 1.15);
 
                   return (
                     <div
                       key={stay.id}
                       onClick={() => setSelectedStay(stay)}
-                      className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-2xs hover:shadow-md transition cursor-pointer flex gap-3 group"
+                      className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs hover:shadow-md transition cursor-pointer flex gap-3 group"
                     >
-                      <div className="relative w-28 h-28 rounded-2xl overflow-hidden shrink-0 bg-slate-100">
+                      {/* Ảnh Khách sạn */}
+                      <div className="relative w-32 h-28 rounded-xl overflow-hidden shrink-0 bg-slate-100">
                         <img 
                           src={stay.coverImage} 
                           alt={stay.name} 
@@ -405,27 +359,30 @@ export const ExploreTab: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart })
                         >
                           <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
                         </button>
-                        <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.2 rounded text-[8px] font-bold bg-[#0074C8] text-white">
+                        <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#0071AF] text-white">
                           {stay.partner}
                         </span>
                       </div>
 
+                      {/* Thông tin Khách sạn */}
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
-                          <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                             <span>{stay.rating}</span>
-                            <span className="text-slate-400 font-normal">({stay.reviewCount} đánh giá)</span>
+                            <span className="text-slate-400 font-normal">({stay.reviewCount})</span>
                           </div>
-                          <h3 className="font-bold text-xs text-slate-900 line-clamp-1 mt-0.5 group-hover:text-[#0074C8] transition">
+
+                          <h3 className="font-bold text-xs sm:text-sm text-[#1D2129] line-clamp-1 mt-0.5 group-hover:text-[#0071AF] transition">
                             {stay.name}
                           </h3>
-                          <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5 flex items-center gap-0.5">
+
+                          <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 flex items-center gap-0.5">
                             <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                             <span>{stay.address}</span>
                           </div>
 
-                          <div className="flex flex-wrap gap-1 mt-1.5">
+                          <div className="flex flex-wrap gap-1 mt-1">
                             {stay.tags.slice(0, 2).map((t, idx) => (
                               <span key={idx} className="px-1.5 py-0.2 rounded text-[9px] bg-slate-100 text-slate-600 font-medium">
                                 {t}
@@ -434,16 +391,21 @@ export const ExploreTab: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart })
                           </div>
                         </div>
 
-                        <div className="flex items-end justify-between mt-2 pt-1 border-t border-slate-100">
+                        {/* Giá tiền chuẩn phong cách Điện Máy Xanh */}
+                        <div className="flex items-end justify-between mt-2 pt-1.5 border-t border-slate-100">
                           <div>
-                            <span className="text-[9px] text-slate-400">Từ</span>
-                            <div className="text-xs font-black text-[#0074C8]">
-                              {minPrice.toLocaleString('vi-VN')}đ <span className="text-[9px] text-slate-400 font-normal">/ đêm</span>
+                            <div className="text-[10px] text-slate-400 line-through">
+                              {originalPrice.toLocaleString('vi-VN')}₫
+                            </div>
+                            <div className="text-sm font-extrabold text-[#E11B1E] leading-none">
+                              {minPrice.toLocaleString('vi-VN')}₫
+                              <span className="text-[10px] text-slate-500 font-normal ml-0.5">/đêm</span>
                             </div>
                           </div>
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-lg">
-                            Giảm 10% VIP
-                          </span>
+
+                          <button className="px-2.5 py-1 rounded-lg bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-bold text-[11px] shadow-2xs transition">
+                            Chọn phòng
+                          </button>
                         </div>
                       </div>
                     </div>

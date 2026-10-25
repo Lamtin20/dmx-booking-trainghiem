@@ -305,23 +305,23 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
   return (
     <div className="w-full min-h-full bg-[#FAFAFA] flex flex-col pb-28 select-none font-sans relative">
       {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-[#0074C8] to-[#005A9E] text-white px-4 py-3 shadow-md sticky top-0 z-20">
+      <div className="bg-gradient-to-r from-[#0071AF] to-[#005E93] text-white px-4 py-3 shadow-md sticky top-0 z-20 font-sans">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="relative">
               <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shadow-xs">
-                <Bot className="w-5 h-5 text-[#FFDF00]" />
+                <Bot className="w-5 h-5 text-[#FED100]" />
               </div>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5 ring-2 ring-[#0074C8] animate-pulse" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5 ring-2 ring-[#0071AF] animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-black text-sm uppercase tracking-tight">AI Trợ Lý Khách Hàng</h1>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#FFDF00] text-[#123653]">
+                <h1 className="font-bold text-sm tracking-tight">AI Trợ Lý Khách Hàng</h1>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#FED100] text-[#1D2129]">
                   {agentConfig.provider === 'gemini' && agentConfig.apiKey ? 'GEMINI LIVE' : 'AGENT 24/7'}
                 </span>
               </div>
-              <p className="text-[10px] text-sky-100">
+              <p className="text-[10px] text-white/80 font-normal">
                 Tư vấn dịch vụ, ví MWG PayLater & Quà Tặng VIP cho {activePersona.honorific} {activePersona.shortName}
               </p>
             </div>
@@ -342,11 +342,11 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
             onClick={() => setActiveMode('advisor')}
             className={`py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
               activeMode === 'advisor'
-                ? 'bg-white text-[#0074C8] shadow-sm'
-                : 'text-sky-100 hover:text-white'
+                ? 'bg-white text-[#0071AF] shadow-xs'
+                : 'text-white/80 hover:text-white'
             }`}
           >
-            <MessageSquare className="w-3.5 h-3.5" />
+            <MessageSquare className="w-3.5 h-3.5 stroke-[2.2]" />
             <span>Tư vấn & CSKH 24/7</span>
           </button>
 
@@ -354,11 +354,11 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
             onClick={() => setActiveMode('planner')}
             className={`py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
               activeMode === 'planner'
-                ? 'bg-white text-[#0074C8] shadow-sm'
-                : 'text-sky-100 hover:text-white'
+                ? 'bg-white text-[#0071AF] shadow-xs'
+                : 'text-white/80 hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-[#FED100]" />
             <span>Lập lịch trình thông minh</span>
           </button>
         </div>
@@ -448,7 +448,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
 
                       <button
                         onClick={() => handleCardAction(msg.actionCard!)}
-                        className="w-full py-2 bg-[#FFDF00] hover:bg-amber-400 text-[#123653] font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                        className="w-full py-2 bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <span>{msg.actionCard.actionLabel || 'Xem ngay'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -649,10 +649,10 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
                   <div className="pt-2">
                     <button
                       onClick={handleCreateCartFromPlanner}
-                      className="w-full py-3 bg-[#FFDF00] hover:bg-amber-400 text-[#123653] font-black text-xs sm:text-sm rounded-xl shadow transition cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-black text-xs sm:text-sm rounded-xl shadow transition cursor-pointer flex items-center justify-center gap-2"
                     >
-                      <ShoppingBag className="w-4 h-4 text-[#123653]" />
-                      <span>Tạo giỏ dịch vụ & Đặt ngay ({currentOption.estimatedTotalCost.toLocaleString('vi-VN')}đ)</span>
+                      <ShoppingBag className="w-4 h-4 text-[#1D2129] stroke-[2.2]" />
+                      <span>Tạo giỏ dịch vụ & Đặt ngay ({currentOption.estimatedTotalCost.toLocaleString('vi-VN')}₫)</span>
                     </button>
                   </div>
                 </div>
@@ -676,7 +676,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
               handleGeneratePlanner(inputText);
             }
           }}
-          className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3 py-2 border border-slate-200 focus-within:border-[#0074C8] focus-within:bg-white transition"
+          className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3 py-2 border border-slate-200 focus-within:border-[#0071AF] focus-within:bg-white transition"
         >
           <input
             type="text"
@@ -687,7 +687,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
                 ? `Nhắn tin cho Trợ lý AI (VD: "Ví PayLater trả góp ra sao?")...`
                 : `Nhắn cho Chatbot (VD: "Đi Đà Lạt 3 ngày, 2 người lớn 1 bé...")...`
             }
-            className="flex-1 bg-transparent text-xs text-slate-800 outline-none placeholder:text-slate-400"
+            className="flex-1 bg-transparent text-xs text-[#1D2129] outline-none placeholder:text-slate-400 font-normal"
           />
 
           <button
@@ -695,7 +695,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
             disabled={!inputText.trim() || isProcessing}
             className={`p-2 rounded-xl transition cursor-pointer ${
               inputText.trim() && !isProcessing
-                ? 'bg-[#0074C8] text-white shadow-xs hover:bg-[#005A9E]'
+                ? 'bg-[#0071AF] text-white shadow-xs hover:bg-[#005E93]'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >

@@ -36,16 +36,16 @@ const MainScreen: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
           {activeTab !== 'planner' && (
             <button
               onClick={() => setActiveTab('planner')}
-              className="fixed bottom-6 right-5 z-40 bg-gradient-to-r from-[#0074C8] to-[#00A5FF] hover:from-[#005A9E] hover:to-[#0074C8] text-white pl-3.5 pr-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 border-2 border-white cursor-pointer group animate-in fade-in slide-in-from-bottom-3"
+              className="fixed bottom-6 right-5 z-40 bg-gradient-to-r from-[#0071AF] to-[#009AE0] hover:from-[#005E93] hover:to-[#0071AF] text-white pl-3 pr-3.5 py-2 rounded-full shadow-xl flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 border-2 border-white cursor-pointer group animate-in fade-in slide-in-from-bottom-3 font-sans"
               title="Mở Chatbot Trợ lý Du lịch AI"
             >
               <div className="relative">
-                <Bot className="w-5 h-5 text-white" />
-                <span className="w-2 h-2 rounded-full bg-[#FFDF00] absolute -top-0.5 -right-0.5 border border-[#0074C8] animate-pulse" />
+                <Bot className="w-5 h-5 text-[#FED100] stroke-[2.2]" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5 border border-[#0071AF] animate-pulse" />
               </div>
               <div className="text-left leading-tight">
-                <span className="block text-[11px] font-black uppercase tracking-tight">Chatbot</span>
-                <span className="block text-[8px] text-amber-200 font-bold">Trợ lý du lịch</span>
+                <span className="block text-xs font-bold text-white tracking-tight">Chatbot AI</span>
+                <span className="block text-[9px] text-[#FED100] font-semibold">Tư vấn 24/7</span>
               </div>
             </button>
           )}

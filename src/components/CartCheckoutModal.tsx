@@ -102,10 +102,10 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({ isOpen, on
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
         {/* Header */}
-        <div className="bg-[#0074C8] text-white px-4 py-3.5 flex items-center justify-between">
+        <div className="bg-[#0071AF] text-white px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold text-sm uppercase">Giỏ dịch vụ & Thanh toán</span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#FFDF00] text-[#123653]">
+            <span className="font-bold text-sm">Giỏ dịch vụ & Thanh toán</span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-[#FED100] text-[#1D2129]">
               {cartItems.length} dịch vụ
             </span>
           </div>
@@ -542,8 +542,8 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({ isOpen, on
                   </div>
                 )}
                 <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline font-bold text-sm">
-                  <span className="text-slate-900">Thanh toán giả lập:</span>
-                  <span className="text-lg font-black text-[#0074C8]">{finalTotal.toLocaleString('vi-VN')}đ</span>
+                  <span className="text-slate-900">Thanh toán:</span>
+                  <span className="text-lg font-black text-[#E11B1E]">{finalTotal.toLocaleString('vi-VN')}₫</span>
                 </div>
               </div>
             </>
@@ -552,21 +552,21 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({ isOpen, on
 
         {/* Footer CTA */}
         {!completedOrder && cartItems.length > 0 && (
-          <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
+          <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3 font-sans">
             <div>
-              <div className="text-[10px] text-slate-500 font-medium">Tổng thanh toán</div>
-              <div className="text-base font-black text-[#0074C8]">
-                {finalTotal.toLocaleString('vi-VN')}đ
+              <div className="text-[11px] text-slate-500 font-medium">Tổng thanh toán</div>
+              <div className="text-base sm:text-lg font-black text-[#E11B1E]">
+                {finalTotal.toLocaleString('vi-VN')}₫
               </div>
             </div>
 
             <button
               onClick={handleCheckout}
               disabled={isSubmitting}
-              className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow cursor-pointer ${
+              className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer ${
                 isSubmitting 
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
-                  : 'bg-[#FFDF00] hover:bg-amber-400 text-[#123653] font-black'
+                  : 'bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-black'
               }`}
             >
               {isSubmitting ? (
@@ -576,7 +576,7 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({ isOpen, on
                 </>
               ) : (
                 <>
-                  <ShieldCheck className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4 stroke-[2.2]" />
                   <span>Xác nhận & Thanh toán Demo</span>
                 </>
               )}
