@@ -1,0 +1,110 @@
+[
+  {
+    "id": "dalat",
+    "file": "public/destinations/dalat.jpg",
+    "title": "File:Da Lat - Xuan Huong Lake.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Da_Lat_-_Xuan_Huong_Lake.jpg",
+    "author": "P. Hughes",
+    "license": "CC BY 4.0",
+    "size": 217300
+  },
+  {
+    "id": "danang",
+    "file": "public/destinations/danang.jpg",
+    "title": "File:Golden Bridge at Ba Na Hills 20250718.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Golden_Bridge_at_Ba_Na_Hills_20250718.jpg",
+    "author": "DvTor8303",
+    "license": "CC0",
+    "size": 252653
+  },
+  {
+    "id": "hoian",
+    "file": "public/destinations/hoian.jpg",
+    "title": "File:Hội An, Ancient Town, 2020-01 CN-10.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:H%E1%BB%99i_An,_Ancient_Town,_2020-01_CN-10.jpg",
+    "author": "Steffen Schmitz (more photos)",
+    "license": "CC BY-SA 4.0",
+    "size": 256462
+  },
+  {
+    "id": "hue",
+    "file": "public/destinations/hue.jpg",
+    "title": "File:Meridian Gate, Hue (I).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Meridian_Gate,_Hue_(I).jpg",
+    "author": "This Photo was taken by Supanut Arunoprayote.\n\nFeel free to use any of my images, but please mention me as the author and may send me a message.  (สามารถใช้ภาพได้อิสระ แต่กรุณาใส่เครดิตผู้ถ่ายและอาจส่งข้อความบอกกล่าวด้วย) \n\n\n\nPlease do not upload an updated image here without consultation with the Author. The author would like to make corrections only at his own source. This ensures that the changes are preserved.Please if you think that any changes should be required, please inform the author.Otherwise you can upload a new image with a new name. Please use one of the templates derivative or extract.",
+    "license": "CC BY 4.0",
+    "size": 169205
+  },
+  {
+    "id": "hanoi",
+    "file": "public/destinations/hanoi.jpg",
+    "title": "File:Tree branches in Hoan Kiem Lake near Ngoc Son Temple.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Tree_branches_in_Hoan_Kiem_Lake_near_Ngoc_Son_Temple.jpg",
+    "author": "Atoorva",
+    "license": "CC BY-SA 4.0",
+    "size": 177006
+  },
+  {
+    "id": "hcm",
+    "file": "public/destinations/hcm.jpg",
+    "title": "File:Ho Chi Minh City - Saigon1324.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Ho_Chi_Minh_City_-_Saigon1324.jpg",
+    "author": "lumoplank",
+    "license": "CC0",
+    "size": 180728
+  },
+  {
+    "id": "phuquoc",
+    "file": "public/destinations/phuquoc.jpg",
+    "title": "File:1 Phu Quoc beach Saigon Phu Quoc Resort and Spa.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:1_Phu_Quoc_beach_Saigon_Phu_Quoc_Resort_and_Spa.jpg",
+    "author": "Elmschrat",
+    "license": "CC0",
+    "size": 320486
+  },
+  {
+    "id": "nhatrang",
+    "file": "public/destinations/nhatrang.jpg",
+    "title": "File:Panorama of Vịnh Nha Trang coastline.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Panorama_of_V%E1%BB%8Bnh_Nha_Trang_coastline.jpg",
+    "author": "Tony24986",
+    "license": "CC BY-SA 4.0",
+    "size": 87681
+  },
+  {
+    "id": "vungtau",
+    "file": "public/destinations/vungtau.jpg",
+    "title": "File:Statue of Jesus in Vung Tau.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Statue_of_Jesus_in_Vung_Tau.jpg",
+    "author": "Chris Phan from Eugene, Oregon, United States",
+    "license": "CC BY-SA 2.0",
+    "size": 190676
+  },
+  {
+    "id": "cantho",
+    "file": "public/destinations/cantho.jpg",
+    "title": "File:Cai Rang Floating Market 1.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Cai_Rang_Floating_Market_1.jpg",
+    "author": "Christophe95",
+    "license": "CC BY-SA 4.0",
+    "size": 174714
+  },
+  {
+    "id": "sapa",
+    "file": "public/destinations/sapa.jpg",
+    "title": "File:Rice terraces in Sapa, Vietnam.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Rice_terraces_in_Sapa,_Vietnam.jpg",
+    "author": "Eerin25",
+    "license": "CC0",
+    "size": 302629
+  },
+  {
+    "id": "halong",
+    "file": "public/destinations/halong.jpg",
+    "title": "File:Halong Bay in Vietnam.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Halong_Bay_in_Vietnam.jpg",
+    "author": "Thomas Hirsch / User:Ravn",
+    "license": "CC BY-SA 3.0",
+    "size": 184261
+  }
+]

@@ -40,16 +40,12 @@ export const MiniAppHeader: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
         </button>
 
         {/* Logo Điện Máy Xanh & Tên mini app */}
-        <div className="flex flex-col items-center justify-center text-center">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs sm:text-sm font-bold tracking-tight text-white">
-              Đi & Trải Nghiệm
-            </span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-[#FED100] text-[#1D2129]">
-              ĐIỆN MÁY XANH
-            </span>
+        <div className="flex items-center justify-center gap-2 min-w-0">
+          <img src="/icons/di-trai-nghiem.svg" alt="" className="w-8 h-8 rounded-[10px] shrink-0 shadow-sm ring-1 ring-white/30" />
+          <div className="flex flex-col items-start min-w-0 leading-tight">
+            <span className="text-[14px] font-bold text-white whitespace-nowrap">Đi &amp; Trải nghiệm</span>
+            <span className="text-[10.5px] font-semibold text-[#FED100] whitespace-nowrap">Điện Máy Xanh</span>
           </div>
-          <span className="text-[10px] text-white/80 font-normal">Chuyến đi theo ý bạn</span>
         </div>
 
         {/* Nút Yêu thích & Giỏ hàng */}

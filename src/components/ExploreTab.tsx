@@ -1,913 +1,841 @@
-import React, { useState } from 'react';
-import { 
-  Search, 
-  Sparkles, 
-  Building2, 
-  Plane, 
-  Bus, 
-  Camera, 
-  Ticket, 
-  Star, 
-  MapPin, 
-  Heart, 
-  ChevronRight, 
-  Check, 
-  ShieldCheck, 
-  Calendar, 
-  Users, 
-  Clock, 
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  Search,
+  MapPin,
+  CalendarDays,
+  Users,
+  Heart,
+  Star,
+  ShieldCheck,
+  Coffee,
+  Plane,
+  Clock,
+  ArrowRightLeft,
+  Armchair,
+  Timer,
+  Ticket,
+  Percent,
+  SlidersHorizontal,
   X,
-  Filter,
-  CheckCircle2,
-  Bot
+  BusFront,
+  Bot,
+  ChevronRight,
+  Briefcase,
 } from 'lucide-react';
 import { useDemo } from '../context/DemoContext';
 import { DESTINATIONS } from '../data/destinations';
 import { STAYS, FLIGHTS, TRANSPORTS, ACTIVITIES, EVENTS } from '../data/catalog';
-import { ServiceCategory, Stay, Flight, TransportTrip, Activity, EntertainmentEvent, CartItem } from '../types';
+import { Stay, Flight, TransportTrip, Activity, EntertainmentEvent, CartItem } from '../types';
+import {
+  CATEGORY_META,
+  Img,
+  CategoryTile,
+  CatId,
+  DatePickerSheet,
+  GuestSheet,
+  FieldRow,
+  SectionTitle,
+  Chip,
+  RatingBadge,
+  vnd,
+  fmtDay,
+  fmtShort,
+  addDays,
+  diffDays,
+  todayISO,
+} from './booking/ui';
+import {
+  StayDetail,
+  FlightDetail,
+  TransportDetail,
+  ActivityDetail,
+  EventDetail,
+  TripState,
+} from './booking/DetailSheets';
+
+const CAT_ORDER: CatId[] = ['stay', 'flight', 'bus_train', 'activity', 'event'];
+
+type Sort = 'popular' | 'price' | 'rating';
+
+const SelectRow: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}> = ({ icon: Icon, label, value, options, onChange }) => {
+  const current = options.find((o) => o.value === value)?.label ?? '';
+  return (
+    <div className="relative">
+      <div className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left">
+        <Icon className="w-5 h-5 text-[#0071AF] shrink-0" strokeWidth={2} />
+        <span className="flex-1 min-w-0">
+          <span className="block text-[11px] text-slate-500 leading-tight">{label}</span>
+          <span className="block text-[14px] font-bold text-slate-900 leading-snug truncate">{current}</span>
+        </span>
+        <ChevronRight className="w-4 h-4 text-slate-300 rotate-90 shrink-0" />
+      </div>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 export const ExploreTab: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
-  const { 
-    addToCart, 
-    wishlistIds, 
-    toggleWishlist, 
-    setActiveTab, 
-    campaigns, 
-    showToast,
-    activeServiceCategory,
-    setActiveServiceCategory
-  } = useDemo();
+  const { addToCart, wishlistIds, toggleWishlist, setActiveTab, campaigns, showToast, activeServiceCategory, setActiveServiceCategory } = useDemo();
 
-  const [selectedDestinationId, setSelectedDestinationId] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterFreeCancel, setFilterFreeCancel] = useState<boolean>(false);
-  const [filterBreakfast, setFilterBreakfast] = useState<boolean>(false);
+  const cat: CatId = (activeServiceCategory as CatId | null) ?? 'stay';
+  const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Active Detail Modal item
-  const [selectedStay, setSelectedStay] = useState<Stay | null>(null);
-  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
-  const [selectedTransport, setSelectedTransport] = useState<TransportTrip | null>(null);
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<EntertainmentEvent | null>(null);
-
-  // Seat picking state for bus/train
-  const [chosenSeatNumber, setChosenSeatNumber] = useState<string>('A2');
-
-  // Filter items
-  const filteredStays = STAYS.filter(s => {
-    if (selectedDestinationId !== 'all' && s.destinationId !== selectedDestinationId) return false;
-    if (filterFreeCancel && !s.policies.cancellationSummary.toLowerCase().includes('miễn phí')) return false;
-    if (filterBreakfast && !s.amenities.some(a => a.toLowerCase().includes('sáng'))) return false;
-    if (searchQuery && !s.name.toLowerCase().includes(searchQuery.toLowerCase()) && !s.address.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
+  /* ---------- Trip / search state ---------- */
+  const startDay = addDays(todayISO(), 14);
+  const [trip, setTrip] = useState<TripState>({
+    checkIn: startDay,
+    checkOut: addDays(startDay, 2),
+    date: startDay,
+    adults: 2,
+    children: 0,
+    rooms: 1,
   });
+  const [destId, setDestId] = useState('all');
+  const [fromCity, setFromCity] = useState('all');
+  const [toCity, setToCity] = useState('all');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<Sort>('popular');
+  const [fFree, setFFree] = useState(false);
+  const [fBreakfast, setFBreakfast] = useState(false);
 
-  const filteredFlights = FLIGHTS.filter(f => {
-    if (searchQuery && !f.airline.toLowerCase().includes(searchQuery.toLowerCase()) && !f.toCity.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const [pickDates, setPickDates] = useState(false);
+  const [pickGuests, setPickGuests] = useState(false);
 
-  const filteredTransports = TRANSPORTS.filter(t => {
-    if (searchQuery && !t.operator.toLowerCase().includes(searchQuery.toLowerCase()) && !t.toCity.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const [selStay, setSelStay] = useState<Stay | null>(null);
+  const [selFlight, setSelFlight] = useState<Flight | null>(null);
+  const [selTrans, setSelTrans] = useState<TransportTrip | null>(null);
+  const [selAct, setSelAct] = useState<Activity | null>(null);
+  const [selEvt, setSelEvt] = useState<EntertainmentEvent | null>(null);
 
-  const filteredActivities = ACTIVITIES.filter(a => {
-    if (selectedDestinationId !== 'all' && a.destinationId !== selectedDestinationId) return false;
-    if (searchQuery && !a.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const nights = Math.max(1, diffDays(trip.checkIn, trip.checkOut));
+  const destName = (id: string) => DESTINATIONS.find((d) => d.id === id)?.name || 'Việt Nam';
+  const q = query.trim().toLowerCase();
 
-  const filteredEvents = EVENTS.filter(e => {
-    if (selectedDestinationId !== 'all' && e.destinationId !== selectedDestinationId) return false;
-    if (searchQuery && !e.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  /* ---------- Derived option lists ---------- */
+  const destOptions = [{ value: 'all', label: 'Tất cả điểm đến' }, ...DESTINATIONS.map((d) => ({ value: d.id, label: d.name }))];
+  const flightFrom = useMemo(() => ['all', ...Array.from(new Set(FLIGHTS.map((f) => f.fromCity)))], []);
+  const flightTo = useMemo(() => ['all', ...Array.from(new Set(FLIGHTS.map((f) => f.toCity)))], []);
+  const busFrom = useMemo(() => ['all', ...Array.from(new Set(TRANSPORTS.map((t) => t.fromCity)))], []);
+  const busTo = useMemo(() => ['all', ...Array.from(new Set(TRANSPORTS.map((t) => t.toCity)))], []);
+  const cityOpts = (arr: string[], all: string) => arr.map((c) => ({ value: c, label: c === 'all' ? all : c }));
 
-  // Direct Booking Handlers
-  const handleBookStayRoom = (stay: Stay, room: any) => {
-    const item: CartItem = {
-      cartItemId: `cart_stay_${stay.id}_${Date.now()}`,
-      category: 'stay',
-      partnerName: stay.partner,
-      title: stay.name,
-      subtitle: `${room.name} • 2 đêm (15/11 - 17/11)`,
-      destinationName: DESTINATIONS.find(d => d.id === stay.destinationId)?.name || 'Việt Nam',
-      dateStart: '2026-11-15',
-      dateEnd: '2026-11-17',
-      quantity: 1,
-      unitPrice: room.pricePerNight * 2,
-      totalPrice: room.pricePerNight * 2,
-      details: {
-        roomName: room.name,
-        nights: 2,
-        adults: room.maxAdults,
-        children: room.maxChildren
-      },
-      eligibleForCampaignIds: stay.campaignIds || ['camp_vip10', 'camp_family200']
-    };
-    addToCart(item);
-    setSelectedStay(null);
+  /* ---------- Filtering ---------- */
+  const stays = useMemo(() => {
+    let r = STAYS.filter((s) => {
+      if (destId !== 'all' && s.destinationId !== destId) return false;
+      if (fFree && !s.policies.cancellationSummary.toLowerCase().includes('miễn phí')) return false;
+      if (fBreakfast && !s.rooms.some((x) => x.includesBreakfast) && !s.amenities.some((a) => a.toLowerCase().includes('sáng'))) return false;
+      if (q && !s.name.toLowerCase().includes(q) && !s.address.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const minP = (s: Stay) => Math.min(...s.rooms.map((x) => x.pricePerNight));
+    if (sort === 'price') r = [...r].sort((a, b) => minP(a) - minP(b));
+    if (sort === 'rating') r = [...r].sort((a, b) => b.rating - a.rating);
+    return r;
+  }, [destId, fFree, fBreakfast, q, sort]);
+
+  const flights = useMemo(() => {
+    let r = FLIGHTS.filter(
+      (f) =>
+        (fromCity === 'all' || f.fromCity === fromCity) &&
+        (toCity === 'all' || f.toCity === toCity) &&
+        (!q || f.airline.toLowerCase().includes(q) || f.toCity.toLowerCase().includes(q) || f.fromCity.toLowerCase().includes(q))
+    );
+    if (sort === 'price') r = [...r].sort((a, b) => a.pricePerAdult - b.pricePerAdult);
+    return r;
+  }, [fromCity, toCity, q, sort]);
+
+  const trans = useMemo(() => {
+    let r = TRANSPORTS.filter(
+      (t) =>
+        (fromCity === 'all' || t.fromCity === fromCity) &&
+        (toCity === 'all' || t.toCity === toCity) &&
+        (!q || t.operator.toLowerCase().includes(q) || t.toCity.toLowerCase().includes(q) || t.fromCity.toLowerCase().includes(q))
+    );
+    if (sort === 'price') r = [...r].sort((a, b) => a.pricePerTicket - b.pricePerTicket);
+    return r;
+  }, [fromCity, toCity, q, sort]);
+
+  const acts = useMemo(() => {
+    let r = ACTIVITIES.filter((a) => (destId === 'all' || a.destinationId === destId) && (!q || a.name.toLowerCase().includes(q)));
+    if (sort === 'price') r = [...r].sort((a, b) => a.options[0].price - b.options[0].price);
+    if (sort === 'rating') r = [...r].sort((a, b) => b.rating - a.rating);
+    return r;
+  }, [destId, q, sort]);
+
+  const events = useMemo(
+    () => EVENTS.filter((e) => (destId === 'all' || e.destinationId === destId) && (!q || e.title.toLowerCase().includes(q))),
+    [destId, q]
+  );
+
+  const resultCount = cat === 'stay' ? stays.length : cat === 'flight' ? flights.length : cat === 'bus_train' ? trans.length : cat === 'activity' ? acts.length : events.length;
+
+  const switchCat = (c: CatId) => {
+    setActiveServiceCategory(c as any);
+    setFromCity('all');
+    setToCity('all');
+    setQuery('');
+    setSort('popular');
+  };
+
+  const doSearch = () => {
+    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast(`Tìm thấy ${resultCount} kết quả phù hợp.`);
+  };
+
+  const addItems = (items: CartItem[]) => {
+    items.forEach((i) => addToCart(i));
+    setSelStay(null);
+    setSelFlight(null);
+    setSelTrans(null);
+    setSelAct(null);
+    setSelEvt(null);
     onOpenCart();
   };
 
-  const handleBookFlight = (flight: Flight) => {
-    const item: CartItem = {
-      cartItemId: `cart_flight_${flight.id}_${Date.now()}`,
-      category: 'flight',
-      partnerName: flight.partner,
-      title: `${flight.airline} (${flight.flightNumber})`,
-      subtitle: `${flight.fromCity} ➔ ${flight.toCity} • ${flight.departureTime}`,
-      destinationName: flight.toCity,
-      dateStart: flight.date,
-      timeSlot: flight.departureTime,
-      quantity: 1,
-      unitPrice: flight.pricePerAdult,
-      totalPrice: flight.pricePerAdult,
-      details: {
-        flightNumber: flight.flightNumber,
-        cabinClass: flight.cabinClass,
-        baggage: flight.baggageAllowance
-      },
-      eligibleForCampaignIds: flight.campaignIds || ['camp_vip10']
-    };
-    addToCart(item);
-    setSelectedFlight(null);
-    onOpenCart();
+  const guestSummary =
+    cat === 'stay'
+      ? `${trip.adults + trip.children} khách • ${trip.rooms} phòng`
+      : cat === 'activity'
+      ? `${trip.adults + trip.children} vé (${trip.adults} NL${trip.children ? `, ${trip.children} TE` : ''})`
+      : `${trip.adults} người lớn${trip.children ? `, ${trip.children} trẻ em` : ''}`;
+
+  const swap = () => {
+    setFromCity(toCity);
+    setToCity(fromCity);
   };
 
-  const handleBookTransport = (trip: TransportTrip) => {
-    const item: CartItem = {
-      cartItemId: `cart_trans_${trip.id}_${Date.now()}`,
-      category: 'bus_train',
-      partnerName: trip.partner,
-      title: `${trip.operator} • Ghế ${chosenSeatNumber}`,
-      subtitle: `${trip.fromCity} ➔ ${trip.toCity} • ${trip.departureTime}`,
-      destinationName: trip.toCity,
-      dateStart: trip.date,
-      timeSlot: trip.departureTime,
-      quantity: 1,
-      unitPrice: trip.pricePerTicket,
-      totalPrice: trip.pricePerTicket,
-      details: {
-        seatNumber: chosenSeatNumber,
-        tripNumber: trip.trainOrBusNumber
-      },
-      eligibleForCampaignIds: trip.campaignIds || ['camp_vip10']
-    };
-    addToCart(item);
-    setSelectedTransport(null);
-    onOpenCart();
+  const promos = campaigns.filter((c) => c.isActive).slice(0, 5);
+  const resultsTitle: Record<CatId, string> = {
+    stay: 'Khách sạn & Resort',
+    flight: 'Chuyến bay',
+    bus_train: 'Chuyến xe & tàu',
+    activity: 'Vé vui chơi & Tour',
+    event: 'Sự kiện & Concert',
   };
 
-  const handleBookActivity = (act: Activity, option: any) => {
-    const item: CartItem = {
-      cartItemId: `cart_act_${act.id}_${Date.now()}`,
-      category: 'activity',
-      partnerName: act.partner,
-      title: act.name,
-      subtitle: `${option.name} • 1 vé`,
-      destinationName: DESTINATIONS.find(d => d.id === act.destinationId)?.name || 'Việt Nam',
-      dateStart: '2026-11-20',
-      quantity: 1,
-      unitPrice: option.price,
-      totalPrice: option.price,
-      details: {
-        optionName: option.name,
-        timeSlot: act.timeSlots[0]
-      },
-      eligibleForCampaignIds: act.campaignIds || ['camp_vip10', 'camp_attraction15']
-    };
-    addToCart(item);
-    setSelectedActivity(null);
-    onOpenCart();
-  };
-
-  const handleBookEvent = (evt: EntertainmentEvent, tier: any) => {
-    const item: CartItem = {
-      cartItemId: `cart_evt_${evt.id}_${Date.now()}`,
-      category: 'event',
-      partnerName: evt.partner,
-      title: evt.title,
-      subtitle: `Hạng vé: ${tier.tierName} • 1 vé`,
-      destinationName: DESTINATIONS.find(d => d.id === evt.destinationId)?.name || 'Việt Nam',
-      dateStart: '2026-11-28',
-      quantity: 1,
-      unitPrice: tier.price,
-      totalPrice: tier.price,
-      details: {
-        tierName: tier.tierName,
-        venue: evt.venue
-      },
-      eligibleForCampaignIds: evt.campaignIds || ['camp_vip10']
-    };
-    addToCart(item);
-    setSelectedEvent(null);
-    onOpenCart();
-  };
-
+  /* ================================================================ */
   return (
-    <div className="w-full min-h-full bg-[#F4F6F8] flex flex-col pb-24 font-sans">
-      {/* 1. Hero Banner chuẩn phong cách Điện Máy Xanh */}
-      <div className="px-3.5 pt-3">
-        <div 
-          onClick={() => setActiveTab('planner')}
-          className="bg-gradient-to-r from-[#0071AF] via-[#0082CA] to-[#009AE0] text-white rounded-2xl p-4 shadow-sm relative overflow-hidden cursor-pointer hover:shadow-md transition group"
-        >
-          <div className="relative z-10 max-w-[85%]">
-            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-[#FED100] text-[#1D2129] uppercase tracking-wider inline-flex items-center gap-1">
-              <Bot className="w-3 h-3 text-[#1D2129]" />
-              Đặc quyền Quà Tặng VIP • Giảm 10%
-            </span>
-            <div className="font-bold text-base sm:text-lg mt-2 text-white leading-tight">
-              Chuyến đi theo ý bạn • Tư vấn bởi AI
+    <div className="@container w-full min-h-full bg-[#F2F4F7] pb-28 font-sans">
+      {/* ---- Intro band ---- */}
+      <div className="bg-[#0071AF] px-4 pt-4 pb-[72px] text-white">
+        <h1 className="text-[20px] font-bold leading-tight">Bạn muốn đi đâu hôm nay?</h1>
+        <p className="text-[13px] text-white/85 mt-1">Thành viên Quà Tặng VIP giảm thêm 10% mọi chuyến đi.</p>
+      </div>
+
+      {/* ---- Search card ---- */}
+      <div className="px-3 -mt-[58px] relative z-10">
+        <div className="bg-white rounded-2xl shadow-[0_6px_24px_rgba(0,60,110,.14)] border border-slate-100 overflow-hidden">
+          {/* category tabs */}
+          <div className="grid grid-cols-5 px-1.5 pt-3 pb-2 border-b border-slate-100">
+            {CAT_ORDER.map((c) => {
+              const on = cat === c;
+              return (
+                <button key={c} onClick={() => switchCat(c)} className="flex flex-col items-center gap-1.5 cursor-pointer group" aria-pressed={on}>
+                  <CategoryTile id={c} size={44} active={on} />
+                  <span className={`text-[11.5px] leading-none pb-1.5 border-b-[3px] ${on ? 'font-bold text-slate-900 border-[#FED100]' : 'font-medium text-slate-600 border-transparent'}`}>
+                    {CATEGORY_META[c].label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* form */}
+          <div className="divide-y divide-slate-100">
+            {(cat === 'stay' || cat === 'activity' || cat === 'event') && (
+              <SelectRow icon={MapPin} label="Điểm đến" value={destId} options={destOptions} onChange={setDestId} />
+            )}
+
+            {(cat === 'flight' || cat === 'bus_train') && (
+              <div className="flex items-stretch">
+                <div className="flex-1 min-w-0">
+                  <SelectRow
+                    icon={cat === 'flight' ? Plane : BusFront}
+                    label="Điểm đi"
+                    value={fromCity}
+                    options={cityOpts(cat === 'flight' ? flightFrom : busFrom, 'Tất cả điểm đi')}
+                    onChange={setFromCity}
+                  />
+                </div>
+                <button onClick={swap} aria-label="Đổi chiều" className="self-center -mx-3 z-10 w-9 h-9 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center text-[#0071AF] cursor-pointer hover:bg-sky-50">
+                  <ArrowRightLeft className="w-4 h-4" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <SelectRow
+                    icon={MapPin}
+                    label="Điểm đến"
+                    value={toCity}
+                    options={cityOpts(cat === 'flight' ? flightTo : busTo, 'Tất cả điểm đến')}
+                    onChange={setToCity}
+                  />
+                </div>
+              </div>
+            )}
+
+            {cat === 'stay' && (
+              <FieldRow
+                icon={CalendarDays}
+                label="Nhận phòng → Trả phòng"
+                value={`${fmtDay(trip.checkIn)} → ${fmtDay(trip.checkOut)}`}
+                trailing={<span className="text-[11px] font-bold text-[#0071AF] bg-[#E6F3FB] px-2 py-1 rounded-md shrink-0">{nights} đêm</span>}
+                onClick={() => setPickDates(true)}
+              />
+            )}
+            {(cat === 'flight' || cat === 'bus_train' || cat === 'activity') && (
+              <FieldRow
+                icon={CalendarDays}
+                label={cat === 'activity' ? 'Ngày tham quan' : 'Ngày khởi hành'}
+                value={fmtDay(trip.date)}
+                onClick={() => setPickDates(true)}
+              />
+            )}
+            {cat === 'event' && (
+              <div className="flex items-center gap-3 px-3.5 py-3 text-[13px] text-slate-600 bg-slate-50">
+                <CalendarDays className="w-5 h-5 text-[#0071AF] shrink-0" />
+                Mỗi sự kiện có lịch diễn cố định — xem ngày giờ ở từng thẻ bên dưới.
+              </div>
+            )}
+
+            {cat !== 'event' && (
+              <FieldRow
+                icon={Users}
+                label={cat === 'stay' ? 'Khách & phòng' : cat === 'activity' ? 'Số lượng vé' : 'Hành khách'}
+                value={guestSummary}
+                onClick={() => setPickGuests(true)}
+              />
+            )}
+
+            <div className="flex items-center gap-3 px-3.5 py-2.5">
+              <Search className="w-5 h-5 text-[#0071AF] shrink-0" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={
+                  cat === 'stay'
+                    ? 'Tên khách sạn, khu vực...'
+                    : cat === 'flight'
+                    ? 'Hãng bay, thành phố...'
+                    : cat === 'bus_train'
+                    ? 'Nhà xe, tuyến đường...'
+                    : cat === 'activity'
+                    ? 'Tên tour, khu vui chơi...'
+                    : 'Tên sự kiện, nghệ sĩ...'
+                }
+                className="flex-1 min-w-0 text-[14px] text-slate-900 outline-none placeholder:text-slate-400"
+              />
+              {query && (
+                <button onClick={() => setQuery('')} aria-label="Xóa" className="text-slate-400 cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <p className="text-[11px] text-white/90 mt-1">
-              Khách sạn, vé xe Phương Trang FUTA, chuyến bay & tour vui chơi giá tốt nhất.
-            </p>
-            <div className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-black text-xs shadow-xs transition">
-              <span>Trò chuyện cùng Chatbot</span>
-              <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
-            </div>
+          </div>
+
+          <div className="p-3 pt-2">
+            <button
+              onClick={doSearch}
+              className="w-full h-12 rounded-xl bg-[#FED100] hover:bg-[#F2C500] active:scale-[.99] text-[#1D2129] font-bold text-[15px] shadow-sm transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Search className="w-5 h-5" strokeWidth={2.4} />
+              Tìm {CATEGORY_META[cat].label.toLowerCase()}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Ngành hàng dịch vụ chuẩn e-commerce Điện Máy Xanh */}
-      <div className="px-3.5 mt-3.5">
-        <div className="grid grid-cols-5 gap-2 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs text-center text-xs">
-          {[
-            { id: null, label: 'Tất cả', icon: '🌟', bg: 'bg-amber-50 text-amber-600' },
-            { id: 'stay', label: 'Khách sạn', icon: '🏨', bg: 'bg-blue-50 text-[#0071AF]' },
-            { id: 'flight', label: 'Máy bay', icon: '✈️', bg: 'bg-sky-50 text-sky-600' },
-            { id: 'bus_train', label: 'Xe khách', icon: '🚌', bg: 'bg-orange-50 text-orange-600' },
-            { id: 'activity', label: 'Vui chơi', icon: '🎡', bg: 'bg-emerald-50 text-emerald-600' }
-          ].map((cat) => {
-            const isSelected = activeServiceCategory === cat.id;
-            return (
-              <button
-                key={cat.label}
-                onClick={() => setActiveServiceCategory(cat.id as any)}
-                className={`flex flex-col items-center py-1.5 px-0.5 rounded-xl transition cursor-pointer ${
-                  isSelected
-                    ? 'bg-sky-50 text-[#0071AF] font-bold ring-1.5 ring-[#0071AF]'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <div className={`w-9 h-9 rounded-xl ${cat.bg} flex items-center justify-center text-base mb-1 shadow-2xs`}>
-                  {cat.icon}
-                </div>
-                <span className="text-[11px] font-medium leading-tight">{cat.label}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* ---- AI banner ---- */}
+      <div className="px-3 mt-3">
+        <button
+          onClick={() => setActiveTab('planner')}
+          className="w-full flex items-center gap-3 bg-white rounded-2xl border border-slate-200/70 px-3.5 py-3 text-left cursor-pointer hover:shadow-md transition"
+        >
+          <span className="w-11 h-11 rounded-full bg-[#E6F3FB] text-[#0071AF] flex items-center justify-center shrink-0">
+            <Bot className="w-6 h-6" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[14px] font-bold text-slate-900">Chưa biết đi đâu? Hỏi Chatbot AI</span>
+            <span className="block text-[12px] text-slate-500">Nhập nhu cầu — nhận lịch trình & giỏ dịch vụ trong 1 phút.</span>
+          </span>
+          <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
+        </button>
       </div>
 
-      {/* 3. Search Bar & Destination Filter */}
-      <div className="px-3.5 mt-3 space-y-2">
-        <div className="bg-white rounded-xl px-3 py-2 flex items-center gap-2 border border-slate-200 shadow-2xs focus-within:border-[#0071AF] focus-within:ring-1 focus-within:ring-[#0071AF] transition">
-          <Search className="w-4 h-4 text-[#0071AF]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo tên khách sạn, địa điểm, hãng xe..."
-            className="w-full text-xs text-[#1D2129] outline-none placeholder:text-slate-400 font-normal"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer">
-              <X className="w-3.5 h-3.5" />
+      {/* ---- Promos ---- */}
+      {promos.length > 0 && (
+        <div className="mt-5">
+          <div className="px-3">
+            <SectionTitle title="Ưu đãi dành cho bạn" sub="Tự động áp dụng ở bước thanh toán" />
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-3 pb-1">
+            {promos.map((p) => (
+              <div key={p.id} className="relative shrink-0 w-[250px] bg-white rounded-2xl border border-slate-200/70 flex overflow-hidden">
+                <div className="w-14 bg-[#FED100] flex flex-col items-center justify-center text-[#1D2129]">
+                  <Percent className="w-6 h-6" strokeWidth={2.4} />
+                </div>
+                <span className="absolute left-[52px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#F2F4F7] border border-slate-200/70" />
+                <div className="p-3 pl-5 min-w-0">
+                  <div className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-2">{p.name}</div>
+                  <div className="mt-1.5 inline-block px-2 py-0.5 rounded border border-dashed border-[#0071AF] text-[11px] font-bold text-[#0071AF]">
+                    {p.code || p.shortTag}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ---- Destinations ---- */}
+      {(cat === 'stay' || cat === 'activity' || cat === 'event') && (
+        <div className="mt-5">
+          <div className="px-3">
+            <SectionTitle title="Điểm đến yêu thích" sub="Chạm để lọc • Ảnh: Wikimedia Commons (CC)" />
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-3 pb-1">
+            {DESTINATIONS.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => {
+                  setDestId(d.id === destId ? 'all' : d.id);
+                  resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className={`relative shrink-0 w-[112px] h-[148px] rounded-2xl overflow-hidden cursor-pointer text-left ring-2 transition ${destId === d.id ? 'ring-[#FED100]' : 'ring-transparent'}`}
+              >
+                <Img src={d.image} alt={d.name} cat="stay" className="absolute inset-0 w-full h-full object-cover bg-slate-200" />
+                <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                <span className="absolute bottom-2 left-2.5 right-2 text-white">
+                  <span className="block text-[14px] font-bold leading-tight">{d.name}</span>
+                  <span className="block text-[10.5px] text-white/85 leading-tight mt-0.5">{d.region}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ---- Results ---- */}
+      <div ref={resultsRef} className="px-3 mt-5 scroll-mt-16">
+        <SectionTitle
+          title={resultsTitle[cat]}
+          sub={
+            cat === 'stay'
+              ? `${fmtDay(trip.checkIn)} - ${fmtDay(trip.checkOut)} • ${nights} đêm`
+              : cat === 'flight' || cat === 'bus_train' || cat === 'activity'
+              ? fmtDay(trip.date)
+              : 'Mở bán theo lịch của đơn vị tổ chức'
+          }
+          right={<span className="text-[12px] font-bold text-[#0071AF] bg-[#E6F3FB] rounded-full px-2.5 py-1">{resultCount} kết quả</span>}
+        />
+
+        {/* Sort / filter chips */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 -mx-3 px-3">
+          <span className="shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500">
+            <SlidersHorizontal className="w-4 h-4" />
+          </span>
+          {(
+            [
+              ['popular', 'Phổ biến'],
+              ['price', 'Giá thấp nhất'],
+              ...(cat === 'stay' || cat === 'activity' ? [['rating', 'Đánh giá cao']] : []),
+            ] as [Sort, string][]
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setSort(k)}
+              className={`shrink-0 h-8 px-3.5 rounded-full text-[12.5px] font-semibold border cursor-pointer transition ${
+                sort === k ? 'bg-[#0071AF] border-[#0071AF] text-white' : 'bg-white border-slate-200 text-slate-700 hover:border-[#0071AF]'
+              }`}
+            >
+              {label}
             </button>
+          ))}
+          {cat === 'stay' && (
+            <>
+              <button
+                onClick={() => setFFree(!fFree)}
+                className={`shrink-0 h-8 px-3.5 rounded-full text-[12.5px] font-semibold border cursor-pointer transition flex items-center gap-1.5 ${
+                  fFree ? 'bg-[#E4F6EC] border-[#12A150] text-[#0E7A3E]' : 'bg-white border-slate-200 text-slate-700'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" /> Hủy miễn phí
+              </button>
+              <button
+                onClick={() => setFBreakfast(!fBreakfast)}
+                className={`shrink-0 h-8 px-3.5 rounded-full text-[12.5px] font-semibold border cursor-pointer transition flex items-center gap-1.5 ${
+                  fBreakfast ? 'bg-[#E4F6EC] border-[#12A150] text-[#0E7A3E]' : 'bg-white border-slate-200 text-slate-700'
+                }`}
+              >
+                <Coffee className="w-3.5 h-3.5" /> Gồm bữa sáng
+              </button>
+            </>
           )}
         </div>
 
-        {/* Destination Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          <button
-            onClick={() => setSelectedDestinationId('all')}
-            className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-              selectedDestinationId === 'all'
-                ? 'bg-[#0071AF] text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            Tất cả điểm đến
-          </button>
-          {DESTINATIONS.map((d) => (
+        {resultCount === 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+            <Search className="w-9 h-9 text-slate-300 mx-auto" />
+            <div className="font-bold text-slate-800 mt-2">Không tìm thấy kết quả</div>
+            <div className="text-[13px] text-slate-500 mt-1">Hãy thử đổi điểm đến hoặc bỏ bớt bộ lọc.</div>
             <button
-              key={d.id}
-              onClick={() => setSelectedDestinationId(d.id)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                selectedDestinationId === d.id
-                  ? 'bg-[#0071AF] text-white shadow-xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
+              onClick={() => {
+                setDestId('all');
+                setFromCity('all');
+                setToCity('all');
+                setQuery('');
+                setFFree(false);
+                setFBreakfast(false);
+              }}
+              className="mt-3 h-9 px-4 rounded-lg bg-[#0071AF] text-white text-[13px] font-semibold cursor-pointer"
             >
-              {d.name}
+              Xóa bộ lọc
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
+        )}
 
-      {/* 4. Active Catalog List */}
-      <div className="px-3.5 mt-3.5 space-y-4">
-        {/* SECTION 1: LƯU TRÚ (HOTELS / RESORTS) */}
-        {(activeServiceCategory === null || activeServiceCategory === 'stay') && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h2 className="text-sm font-bold text-[#1D2129] flex items-center gap-1.5">
-                  <span className="w-2 h-4 rounded-xs bg-[#0071AF] inline-block" />
-                  <span>Khách sạn & Resort nổi bật</span>
-                </h2>
-                <span className="text-[11px] text-slate-500">Giá rõ ràng, miễn phí ăn sáng buffet, thang máy</span>
-              </div>
-              <span className="text-xs font-bold text-[#0071AF]">{filteredStays.length} cơ sở</span>
-            </div>
-
-            {filteredStays.length === 0 ? (
-              <div className="bg-white p-6 rounded-2xl text-center text-xs text-slate-500 border border-slate-200">
-                Không tìm thấy khách sạn phù hợp với bộ lọc hiện tại.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredStays.map((stay) => {
-                  const isSaved = wishlistIds.includes(stay.id);
-                  const minPrice = Math.min(...stay.rooms.map(r => r.pricePerNight));
-                  const originalPrice = Math.round(minPrice * 1.15);
-
-                  return (
-                    <div
-                      key={stay.id}
-                      onClick={() => setSelectedStay(stay)}
-                      className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs hover:shadow-md transition cursor-pointer flex gap-3 group"
+        {/* STAYS */}
+        {cat === 'stay' && (
+          <div className="grid grid-cols-1 @xl:grid-cols-2 gap-3">
+            {stays.map((s) => {
+              const minPrice = Math.min(...s.rooms.map((r) => r.pricePerNight));
+              const orig = Math.round(minPrice * 1.15);
+              const saved = wishlistIds.includes(s.id);
+              const free = s.policies.cancellationSummary.toLowerCase().includes('miễn phí');
+              const bf = s.rooms.some((r) => r.includesBreakfast);
+              return (
+                <article key={s.id} onClick={() => setSelStay(s)} className="bg-white rounded-2xl overflow-hidden border border-slate-200/70 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col">
+                  <div className="relative aspect-[16/9] bg-slate-200">
+                    <Img src={s.coverImage} alt={s.name} cat="stay" className="w-full h-full object-cover" />
+                    <span className="absolute top-2.5 left-2.5 px-2 py-1 rounded-md bg-[#E11B1E] text-white text-[11px] font-bold">Giảm 13%</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist(s.id);
+                      }}
+                      aria-label="Yêu thích"
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/95 shadow flex items-center justify-center cursor-pointer"
                     >
-                      {/* Ảnh Khách sạn */}
-                      <div className="relative w-32 h-28 rounded-xl overflow-hidden shrink-0 bg-slate-100">
-                        <img 
-                          src={stay.coverImage} 
-                          alt={stay.name} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleWishlist(stay.id);
-                          }}
-                          className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/40 backdrop-blur text-white hover:text-rose-400 transition"
-                        >
-                          <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
-                        </button>
-                        <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#0071AF] text-white">
-                          {stay.partner}
-                        </span>
-                      </div>
-
-                      {/* Thông tin Khách sạn */}
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span>{stay.rating}</span>
-                            <span className="text-slate-400 font-normal">({stay.reviewCount})</span>
-                          </div>
-
-                          <h3 className="font-bold text-xs sm:text-sm text-[#1D2129] line-clamp-1 mt-0.5 group-hover:text-[#0071AF] transition">
-                            {stay.name}
-                          </h3>
-
-                          <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 flex items-center gap-0.5">
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{stay.address}</span>
-                          </div>
-
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {stay.tags.slice(0, 2).map((t, idx) => (
-                              <span key={idx} className="px-1.5 py-0.2 rounded text-[9px] bg-slate-100 text-slate-600 font-medium">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Giá tiền chuẩn phong cách Điện Máy Xanh */}
-                        <div className="flex items-end justify-between mt-2 pt-1.5 border-t border-slate-100">
-                          <div>
-                            <div className="text-[10px] text-slate-400 line-through">
-                              {originalPrice.toLocaleString('vi-VN')}₫
-                            </div>
-                            <div className="text-sm font-extrabold text-[#E11B1E] leading-none">
-                              {minPrice.toLocaleString('vi-VN')}₫
-                              <span className="text-[10px] text-slate-500 font-normal ml-0.5">/đêm</span>
-                            </div>
-                          </div>
-
-                          <button className="px-2.5 py-1 rounded-lg bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-bold text-[11px] shadow-2xs transition">
-                            Chọn phòng
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* SECTION 2: CHUYẾN BAY (FLIGHTS) */}
-        {(activeServiceCategory === null || activeServiceCategory === 'flight') && (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div>
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Plane className="w-4 h-4 text-sky-600" />
-                  <span>Vé máy bay giá tốt</span>
-                </h2>
-                <span className="text-[10px] text-slate-400">Giờ bay đẹp, Vietnam Airlines, Vietjet</span>
-              </div>
-              <span className="text-xs font-bold text-sky-600">{filteredFlights.length} chuyến</span>
-            </div>
-
-            <div className="space-y-2.5">
-              {filteredFlights.map((flight) => (
-                <div
-                  key={flight.id}
-                  onClick={() => setSelectedFlight(flight)}
-                  className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs hover:shadow-md transition cursor-pointer flex items-center justify-between gap-3"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-xs text-sky-900">{flight.airline}</span>
-                      <span className="text-[10px] font-mono text-slate-400">{flight.flightNumber}</span>
-                      <span className="px-1.5 py-0.2 rounded text-[8px] font-bold bg-sky-100 text-sky-800">
-                        {flight.partner}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs text-slate-800">
-                      <div>
-                        <div className="font-black text-sm">{flight.departureTime}</div>
-                        <div className="text-[10px] text-slate-400">{flight.fromCode}</div>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[9px] text-slate-400 font-mono">{flight.duration}</span>
-                        <div className="w-16 h-0.5 bg-slate-300 relative my-0.5">
-                          <Plane className="w-2.5 h-2.5 text-sky-600 absolute -top-1 left-1/2 -translate-x-1/2" />
-                        </div>
-                        <span className="text-[8px] text-emerald-600 font-semibold">Bay thẳng</span>
-                      </div>
-                      <div>
-                        <div className="font-black text-sm">{flight.arrivalTime}</div>
-                        <div className="text-[10px] text-slate-400">{flight.toCode}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xs font-black text-[#0074C8]">
-                      {flight.pricePerAdult.toLocaleString('vi-VN')}đ
-                    </div>
-                    <div className="text-[10px] text-slate-400">/{flight.cabinClass}</div>
-                    <button className="mt-1 px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-[10px] shadow-2xs cursor-pointer">
-                      Chọn vé
+                      <Heart className={`w-4 h-4 ${saved ? 'fill-[#E11B1E] text-[#E11B1E]' : 'text-slate-600'}`} />
                     </button>
+                    <span className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded bg-white/95 text-[10.5px] font-bold text-slate-700">{s.partner}</span>
                   </div>
-                </div>
-              ))}
-            </div>
+                  <div className="p-3.5 flex-1 flex flex-col">
+                    <div className="flex items-center gap-0.5">
+                      {Array.from({ length: s.stars }).map((_, i) => (
+                        <Star key={i} className="w-3 h-3 fill-[#FFB400] text-[#FFB400]" />
+                      ))}
+                    </div>
+                    <h3 className="text-[16px] font-bold text-slate-900 leading-snug mt-1 line-clamp-2">{s.name}</h3>
+                    <div className="mt-1.5">
+                      <RatingBadge rating={s.rating} count={s.reviewCount} />
+                    </div>
+                    <div className="mt-2 flex items-start gap-1.5 text-[12.5px] text-slate-500">
+                      <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <span className="line-clamp-1">{s.address}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {free && (
+                        <Chip tone="green" icon={ShieldCheck}>
+                          Hủy miễn phí
+                        </Chip>
+                      )}
+                      {bf && (
+                        <Chip tone="green" icon={Coffee}>
+                          Gồm bữa sáng
+                        </Chip>
+                      )}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-dashed border-slate-200 flex items-end justify-between gap-2 mt-auto">
+                      <div className="text-[11px] text-slate-500 leading-snug">
+                        {nights} đêm, {trip.adults + trip.children} khách
+                        <div className="text-[11px] text-slate-400">Đã gồm thuế & phí</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[12px] text-slate-400 line-through leading-none">{vnd(orig)}</div>
+                        <div className="text-[20px] font-bold text-[#E11B1E] leading-tight">{vnd(minPrice)}</div>
+                        <div className="text-[11px] text-slate-500">/đêm</div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
 
-        {/* SECTION 3: VÉ XE KHÁCH & TÀU HỎA */}
-        {(activeServiceCategory === null || activeServiceCategory === 'bus_train') && (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div>
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Bus className="w-4 h-4 text-amber-600" />
-                  <span>Vé xe khách & Tàu hỏa (Vexere)</span>
-                </h2>
-                <span className="text-[10px] text-slate-400">Phương Trang FUTA, Hoa Mai VIP, Tàu SE Thống Nhất</span>
-              </div>
-              <span className="text-xs font-bold text-amber-600">{filteredTransports.length} tuyến</span>
-            </div>
-
-            <div className="space-y-2.5">
-              {filteredTransports.map((trip) => (
-                <div
-                  key={trip.id}
-                  onClick={() => setSelectedTransport(trip)}
-                  className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs hover:shadow-md transition cursor-pointer flex items-center justify-between gap-3"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="font-bold text-xs text-slate-900">{trip.operator}</span>
-                      <span className="px-1.5 py-0.2 rounded text-[8px] font-bold bg-amber-100 text-amber-900">
-                        {trip.seatClass}
-                      </span>
-                    </div>
-
-                    <div className="text-xs font-bold text-slate-800">
-                      {trip.fromCity} ➔ {trip.toCity}
-                    </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
-                      Khởi hành: <span className="font-bold text-slate-700">{trip.departureTime}</span> ({trip.duration})
+        {/* FLIGHTS */}
+        {cat === 'flight' && (
+          <div className="space-y-3">
+            {flights.map((f) => (
+              <article key={f.id} onClick={() => setSelFlight(f)} className="bg-white rounded-2xl border border-slate-200/70 shadow-sm hover:shadow-md transition cursor-pointer p-4">
+                <div className="flex items-center justify-between mb-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-xl bg-[#E3F4FD] text-[#0A8FD6] flex items-center justify-center">
+                      <Plane className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <div className="text-[14px] font-bold text-slate-900 leading-tight">{f.airline}</div>
+                      <div className="text-[11.5px] text-slate-500">
+                        {f.flightNumber} • {f.cabinClass}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="text-right">
-                    <div className="text-xs font-black text-[#0074C8]">
-                      {trip.pricePerTicket.toLocaleString('vi-VN')}đ
-                    </div>
-                    <div className="text-[9px] text-emerald-600 font-semibold">Còn {trip.availableSeats} chỗ</div>
-                    <button className="mt-1 px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-[10px] shadow-2xs cursor-pointer">
-                      Chọn chỗ
-                    </button>
-                  </div>
+                  {f.availableSeats <= 8 && <Chip tone="red">Còn {f.availableSeats} chỗ</Chip>}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 4: TOUR & VÉ THAM QUAN (ACTIVITIES) */}
-        {(activeServiceCategory === null || activeServiceCategory === 'activity') && (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div>
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Camera className="w-4 h-4 text-emerald-600" />
-                  <span>Vé vui chơi & Tour tham quan</span>
-                </h2>
-                <span className="text-[10px] text-slate-400">Bà Nà Hills, Ký ức Hội An, Datanla, VinWonders</span>
-              </div>
-              <span className="text-xs font-bold text-emerald-600">{filteredActivities.length} hoạt động</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredActivities.map((act) => (
-                <div
-                  key={act.id}
-                  onClick={() => setSelectedActivity(act)}
-                  className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-2xs hover:shadow-md transition cursor-pointer flex flex-col justify-between"
-                >
+                <div className="flex items-center gap-2">
                   <div>
-                    <div className="relative w-full h-32 rounded-2xl overflow-hidden bg-slate-100 mb-2">
-                      <img src={act.coverImage} alt={act.name} className="w-full h-full object-cover" />
-                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.2 rounded text-[8px] font-bold bg-emerald-600 text-white">
-                        {act.partner}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      <span>{act.rating}</span>
-                      <span className="text-slate-400 font-normal">({act.reviewCount})</span>
-                    </div>
-                    <h3 className="font-bold text-xs text-slate-900 mt-1 line-clamp-2">{act.name}</h3>
+                    <div className="text-[22px] font-bold text-slate-900 leading-none">{f.departureTime}</div>
+                    <div className="text-[12px] font-semibold text-slate-500 mt-1">{f.fromCode}</div>
                   </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-[9px] text-slate-400">Từ</span>
-                      <div className="text-xs font-black text-[#0074C8]">
-                        {act.options[0].price.toLocaleString('vi-VN')}đ
-                      </div>
+                  <div className="flex-1 flex flex-col items-center px-1">
+                    <span className="text-[11px] text-slate-500">{f.duration}</span>
+                    <div className="w-full flex items-center my-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      <span className="flex-1 border-t border-slate-300" />
+                      <Plane className="w-3.5 h-3.5 text-[#0A8FD6] mx-0.5" />
+                      <span className="flex-1 border-t border-slate-300" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                     </div>
-                    <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      Giảm 15% VUIHE15
-                    </span>
+                    <span className="text-[11px] font-semibold text-[#12A150]">Bay thẳng</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[22px] font-bold text-slate-900 leading-none">{f.arrivalTime}</div>
+                    <div className="text-[12px] font-semibold text-slate-500 mt-1">{f.toCode}</div>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="mt-3.5 pt-3 border-t border-dashed border-slate-200 flex items-end justify-between gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Chip icon={Briefcase}>{f.baggageAllowance.carryOnKg}kg xách tay</Chip>
+                    {f.baggageAllowance.checkedKg > 0 && <Chip tone="green">{f.baggageAllowance.checkedKg}kg ký gửi</Chip>}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-[19px] font-bold text-[#E11B1E] leading-none">{vnd(f.pricePerAdult)}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">/khách</div>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         )}
 
-        {/* SECTION 5: SỰ KIỆN & CONCERT */}
-        {(activeServiceCategory === null || activeServiceCategory === 'event') && (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div>
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Ticket className="w-4 h-4 text-rose-600" />
-                  <span>Sự kiện & Concert âm nhạc (Ticketbox)</span>
-                </h2>
-                <span className="text-[10px] text-slate-400">Hà Anh Tuấn Live Concert, Vũ Tour, DIFF Pháo hoa</span>
-              </div>
-              <span className="text-xs font-bold text-rose-600">{filteredEvents.length} sự kiện</span>
-            </div>
-
-            <div className="space-y-3">
-              {filteredEvents.map((evt) => (
-                <div
-                  key={evt.id}
-                  onClick={() => setSelectedEvent(evt)}
-                  className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-2xs hover:shadow-md transition cursor-pointer flex gap-3"
-                >
-                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-950">
-                    <img src={evt.coverImage} alt={evt.title} className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.2 rounded text-[8px] font-bold bg-rose-600 text-white">
-                      {evt.partner}
+        {/* BUS / TRAIN */}
+        {cat === 'bus_train' && (
+          <div className="space-y-3">
+            {trans.map((t) => (
+              <article key={t.id} onClick={() => setSelTrans(t)} className="bg-white rounded-2xl border border-slate-200/70 shadow-sm hover:shadow-md transition cursor-pointer p-4">
+                <div className="flex items-start justify-between gap-2 mb-3.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-9 h-9 rounded-xl bg-[#FFF1E3] text-[#D96A0B] flex items-center justify-center shrink-0">
+                      <BusFront className="w-5 h-5" />
                     </span>
+                    <div className="min-w-0">
+                      <div className="text-[14px] font-bold text-slate-900 leading-tight truncate">{t.operator}</div>
+                      <div className="text-[11.5px] text-slate-500 truncate">{t.seatClass}</div>
+                    </div>
                   </div>
-
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-xs text-slate-900 line-clamp-1">{evt.title}</h3>
-                      <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{evt.dateTime}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="line-clamp-1">{evt.venue}</span>
-                      </div>
+                  <Chip tone={t.availableSeats < 10 ? 'red' : 'green'} icon={Armchair}>
+                    Còn {t.availableSeats} chỗ
+                  </Chip>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <div className="text-[22px] font-bold text-slate-900 leading-none">{t.departureTime}</div>
+                    <div className="text-[12px] text-slate-500 mt-1 max-w-[88px] leading-tight">{t.fromCity}</div>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center px-1">
+                    <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                      <Timer className="w-3 h-3" />
+                      {t.duration}
+                    </span>
+                    <div className="w-full flex items-center my-1">
+                      <span className="w-1.5 h-1.5 rounded-full border border-slate-400" />
+                      <span className="flex-1 border-t border-dashed border-slate-300" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                     </div>
-
-                    <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-100">
-                      <div>
-                        <span className="text-[9px] text-slate-400">Từ</span>
-                        <div className="text-xs font-black text-rose-600">
-                          {evt.tiers[evt.tiers.length - 1].price.toLocaleString('vi-VN')}đ
-                        </div>
-                      </div>
-                      <button className="px-2.5 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-[10px] shadow-2xs">
-                        Mua vé
-                      </button>
-                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[22px] font-bold text-slate-900 leading-none">{t.arrivalTime}</div>
+                    <div className="text-[12px] text-slate-500 mt-1 max-w-[88px] leading-tight ml-auto">{t.toCity}</div>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="mt-3.5 pt-3 border-t border-dashed border-slate-200 flex items-end justify-between">
+                  <div className="text-[12px] text-slate-500 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span className="line-clamp-1 max-w-[170px]">{t.fromStation}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[19px] font-bold text-[#E11B1E] leading-none">{vnd(t.pricePerTicket)}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">/vé</div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {/* ACTIVITIES */}
+        {cat === 'activity' && (
+          <div className="grid grid-cols-1 @xl:grid-cols-2 gap-3">
+            {acts.map((a) => {
+              const from = Math.min(...a.options.map((o) => o.price));
+              return (
+                <article key={a.id} onClick={() => setSelAct(a)} className="bg-white rounded-2xl overflow-hidden border border-slate-200/70 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col">
+                  <div className="relative aspect-[16/10] bg-slate-200">
+                    <Img src={a.coverImage} alt={a.name} cat="activity" className="w-full h-full object-cover" />
+                    <span className="absolute top-2.5 left-2.5 px-2 py-1 rounded-md bg-[#12A150] text-white text-[11px] font-bold">Giảm 15%</span>
+                    <span className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded bg-white/95 text-[10.5px] font-bold text-slate-700">{a.partner}</span>
+                  </div>
+                  <div className="p-3.5 flex-1 flex flex-col">
+                    <h3 className="text-[15.5px] font-bold text-slate-900 leading-snug line-clamp-2">{a.name}</h3>
+                    <div className="mt-1.5">
+                      <RatingBadge rating={a.rating} count={a.reviewCount} />
+                    </div>
+                    <div className="mt-2 flex items-center gap-3 text-[12px] text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> {a.duration}
+                      </span>
+                      <span className="flex items-center gap-1 min-w-0">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{destName(a.destinationId)}</span>
+                      </span>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-dashed border-slate-200 flex items-end justify-between mt-auto">
+                      <span className="text-[11px] text-slate-500">Giá từ</span>
+                      <div className="text-right">
+                        <div className="text-[19px] font-bold text-[#E11B1E] leading-none">{vnd(from)}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">/vé</div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {/* EVENTS */}
+        {cat === 'event' && (
+          <div className="space-y-3">
+            {events.map((e) => {
+              const open = e.status === 'open_for_sale';
+              const min = Math.min(...e.tiers.map((t) => t.price));
+              const dm = e.dateTime.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+              const m = dm ? [dm[0], dm[1], dm[2]] : null;
+              return (
+                <article key={e.id} onClick={() => setSelEvt(e)} className="bg-white rounded-2xl overflow-hidden border border-slate-200/70 shadow-sm hover:shadow-md transition cursor-pointer flex">
+                  <div className="relative w-[112px] shrink-0 bg-slate-900">
+                    <Img src={e.coverImage} alt={e.title} cat="event" className="absolute inset-0 w-full h-full object-cover" />
+                    {m && (
+                      <span className="absolute top-2 left-2 w-11 rounded-lg bg-white text-center overflow-hidden shadow">
+                        <span className="block bg-[#E11B5A] text-white text-[9px] font-bold leading-4">THG {Number(m[2])}</span>
+                        <span className="block text-[16px] font-bold text-slate-900 leading-6">{m[1]}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3.5 flex-1 min-w-0 flex flex-col">
+                    <h3 className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2">{e.title}</h3>
+                    <div className="mt-1.5 space-y-1 text-[12px] text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{e.dateTime}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{e.venue}</span>
+                      </div>
+                    </div>
+                    <div className="mt-auto pt-2.5 flex items-end justify-between gap-2">
+                      <Chip tone={open ? 'green' : 'slate'} icon={Ticket}>
+                        {open ? 'Đang mở bán' : e.status === 'sold_out' ? 'Hết vé' : 'Sắp mở bán'}
+                      </Chip>
+                      <div className="text-right">
+                        <div className="text-[10.5px] text-slate-500 leading-none">Từ</div>
+                        <div className="text-[17px] font-bold text-[#E11B1E] leading-tight">{vnd(min)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* ==================================================== */}
-      {/* DETAIL MODALS FOR 1-CLICK BOOKING                     */}
-      {/* ==================================================== */}
+      <p className="px-5 mt-5 text-center text-[11px] leading-relaxed text-slate-400">
+        Bản demo mô phỏng — dữ liệu, giá và hình ảnh cơ sở lưu trú, tour, sự kiện chỉ mang tính minh họa, không phải dịch vụ thật.
+      </p>
 
-      {/* 1. Stay Detail Modal */}
-      {selectedStay && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
-            <div className="relative h-44 shrink-0 bg-slate-900">
-              <img src={selectedStay.coverImage} alt={selectedStay.name} className="w-full h-full object-cover" />
-              <button onClick={() => setSelectedStay(null)} className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition">
-                <X className="w-4 h-4" />
-              </button>
-              <div className="absolute bottom-2 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#0074C8] text-white">
-                Đối tác: {selectedStay.partner}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div>
-                <h3 className="font-black text-base text-slate-900">{selectedStay.name}</h3>
-                <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                  <span>{selectedStay.address}</span>
-                </div>
-                <div className="mt-2 text-xs text-slate-600">{selectedStay.description}</div>
-              </div>
-
-              {/* Amenities */}
-              <div>
-                <div className="text-xs font-bold uppercase text-slate-700 mb-1.5">Tiện nghi nổi bật:</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedStay.amenities.map((a, i) => (
-                    <span key={i} className="px-2 py-1 rounded-lg bg-sky-50 text-sky-800 text-[11px] font-medium flex items-center gap-1">
-                      <Check className="w-3 h-3 text-sky-600" />
-                      <span>{a}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Room Selection */}
-              <div>
-                <div className="text-xs font-bold uppercase text-slate-700 mb-2">Chọn loại phòng:</div>
-                <div className="space-y-2.5">
-                  {selectedStay.rooms.map((room) => (
-                    <div key={room.id} className="p-3 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-bold text-xs text-slate-900">{room.name}</div>
-                        <div className="text-[11px] text-slate-500">{room.bedType} • {room.areaM2}m²</div>
-                        <div className="text-[10px] text-emerald-700 font-semibold mt-1">
-                          ✓ {room.includesBreakfast ? 'Bao gồm ăn sáng' : 'Chưa có ăn sáng'} • Miễn phí hủy trước {room.freeCancellationBeforeDays} ngày
-                        </div>
-                        <div className="text-xs font-black text-[#0074C8] mt-1">
-                          {room.pricePerNight.toLocaleString('vi-VN')}đ <span className="text-[10px] font-normal text-slate-400">/đêm</span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleBookStayRoom(selectedStay, room)}
-                        className="px-3.5 py-2 rounded-xl bg-[#FFDF00] hover:bg-amber-400 text-[#123653] font-black text-xs transition shadow-xs cursor-pointer shrink-0"
-                      >
-                        Đặt phòng
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* ---- Pickers ---- */}
+      {pickDates && (
+        <DatePickerSheet
+          mode={cat === 'stay' ? 'range' : 'single'}
+          start={cat === 'stay' ? trip.checkIn : trip.date}
+          end={trip.checkOut}
+          title={cat === 'stay' ? undefined : cat === 'activity' ? 'Chọn ngày tham quan' : 'Chọn ngày khởi hành'}
+          onClose={() => setPickDates(false)}
+          onApply={(s, e) => {
+            const span = Math.max(1, diffDays(trip.checkIn, trip.checkOut));
+            setTrip({ ...trip, checkIn: s, checkOut: e || addDays(s, span), date: s });
+            setPickDates(false);
+          }}
+        />
+      )}
+      {pickGuests && (
+        <GuestSheet
+          value={{ adults: trip.adults, children: trip.children, rooms: trip.rooms }}
+          showRooms={cat === 'stay'}
+          title={cat === 'stay' ? 'Khách & số phòng' : cat === 'activity' ? 'Số lượng vé' : 'Hành khách'}
+          adultLabel={cat === 'activity' ? 'Vé người lớn' : 'Người lớn'}
+          childLabel={cat === 'activity' ? 'Vé trẻ em' : 'Trẻ em'}
+          onClose={() => setPickGuests(false)}
+          onApply={(g) => {
+            setTrip({ ...trip, ...g });
+            setPickGuests(false);
+          }}
+        />
       )}
 
-      {/* 2. Bus / Train Seat Picker Modal */}
-      {selectedTransport && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
-            <div className="bg-[#0074C8] text-white p-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-sm">{selectedTransport.operator}</h3>
-                <div className="text-xs text-sky-100">
-                  {selectedTransport.fromCity} ➔ {selectedTransport.toCity} • Giờ đi: {selectedTransport.departureTime}
-                </div>
-              </div>
-              <button onClick={() => setSelectedTransport(null)} className="p-1 text-white hover:bg-white/20 rounded-full transition">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200 text-xs text-amber-900">
-                Sơ đồ chỗ ngồi mô phỏng ({selectedTransport.seatClass}). Chọn vị trí ưng ý nhất cho hành trình của bạn.
-              </div>
-
-              {/* Interactive Seat Layout Grid */}
-              <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 text-center">
-                <div className="text-xs font-bold text-slate-600 mb-3">TẦNG 1 (SƠ ĐỒ GIƯỜNG NẰM DEMO)</div>
-                <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
-                  {['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9'].map((seat) => {
-                    const isOccupied = selectedTransport.seatLayout.occupiedSeatNumbers.includes(seat);
-                    const isSelected = chosenSeatNumber === seat;
-
-                    return (
-                      <button
-                        key={seat}
-                        disabled={isOccupied}
-                        onClick={() => setChosenSeatNumber(seat)}
-                        className={`p-3 rounded-2xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 ${
-                          isOccupied
-                            ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'
-                            : isSelected
-                            ? 'bg-[#0074C8] text-white border-[#0074C8] ring-2 ring-sky-300 shadow-md'
-                            : 'bg-white text-slate-800 border-slate-200 hover:border-sky-400 cursor-pointer'
-                        }`}
-                      >
-                        <Bus className="w-4 h-4" />
-                        <span>{seat}</span>
-                        <span className="text-[9px] font-normal">{isOccupied ? 'Đã đặt' : isSelected ? 'Đang chọn' : 'Còn trống'}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs p-3 bg-white border border-slate-200 rounded-2xl">
-                <div>
-                  <div className="text-slate-500">Ghế đang chọn: <span className="font-bold text-slate-900">{chosenSeatNumber}</span></div>
-                  <div className="font-black text-sm text-[#0074C8] mt-0.5">
-                    {selectedTransport.pricePerTicket.toLocaleString('vi-VN')}đ
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleBookTransport(selectedTransport)}
-                  className="px-4 py-2.5 rounded-xl bg-[#FFDF00] hover:bg-amber-400 text-[#123653] font-black text-xs transition shadow-xs cursor-pointer"
-                >
-                  Xác nhận đặt chỗ
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* ---- Detail sheets ---- */}
+      {selStay && (
+        <StayDetail
+          stay={selStay}
+          trip={trip}
+          setTrip={setTrip}
+          destinationName={destName(selStay.destinationId)}
+          saved={wishlistIds.includes(selStay.id)}
+          onToggleSave={() => toggleWishlist(selStay.id)}
+          onClose={() => setSelStay(null)}
+          onAdd={addItems}
+        />
       )}
-
-      {/* 3. Flight Booking Modal */}
-      {selectedFlight && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
-            <div className="bg-[#0074C8] text-white p-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-sm">{selectedFlight.airline} ({selectedFlight.flightNumber})</h3>
-                <div className="text-xs text-sky-100">{selectedFlight.fromCity} ➔ {selectedFlight.toCity}</div>
-              </div>
-              <button onClick={() => setSelectedFlight(null)} className="p-1 text-white hover:bg-white/20 rounded-full transition">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Hạng vé:</span>
-                  <span className="font-bold text-slate-800">{selectedFlight.cabinClass}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Hành lý xách tay:</span>
-                  <span className="font-bold text-slate-800">{selectedFlight.baggageAllowance.carryOnKg} kg</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Hành lý ký gửi:</span>
-                  <span className="font-bold text-slate-800">{selectedFlight.baggageAllowance.checkedKg} kg</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Giá vé người lớn:</span>
-                  <span className="font-black text-[#0074C8]">{selectedFlight.pricePerAdult.toLocaleString('vi-VN')}đ</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleBookFlight(selectedFlight)}
-                className="w-full py-3 bg-[#FFDF00] hover:bg-amber-400 text-[#123653] font-black text-xs rounded-xl shadow-md transition cursor-pointer"
-              >
-                Đặt vé chuyến bay này
-              </button>
-            </div>
-          </div>
-        </div>
+      {selFlight && (
+        <FlightDetail flight={selFlight} trip={trip} setTrip={setTrip} destinationName={selFlight.toCity} onClose={() => setSelFlight(null)} onAdd={addItems} />
       )}
-
-      {/* 4. Activity Modal */}
-      {selectedActivity && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
-            <div className="relative h-40 shrink-0 bg-slate-900">
-              <img src={selectedActivity.coverImage} alt={selectedActivity.name} className="w-full h-full object-cover" />
-              <button onClick={() => setSelectedActivity(null)} className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <h3 className="font-black text-sm text-slate-900">{selectedActivity.name}</h3>
-              <p className="text-xs text-slate-600">{selectedActivity.shortDescription}</p>
-
-              <div className="text-xs font-bold uppercase text-slate-700">Chọn loại vé:</div>
-              <div className="space-y-2">
-                {selectedActivity.options.map((opt) => (
-                  <div key={opt.id} className="p-3 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-xs text-slate-800">{opt.name}</div>
-                      <div className="text-[10px] text-slate-500">{opt.description}</div>
-                      <div className="text-xs font-black text-[#0074C8] mt-1">{opt.price.toLocaleString('vi-VN')}đ</div>
-                    </div>
-                    <button
-                      onClick={() => handleBookActivity(selectedActivity, opt)}
-                      className="px-3 py-1.5 rounded-xl bg-[#FFDF00] hover:bg-amber-400 text-[#123653] font-bold text-xs transition shadow-2xs shrink-0 cursor-pointer"
-                    >
-                      Đặt vé
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      {selTrans && (
+        <TransportDetail tripData={selTrans} trip={trip} setTrip={setTrip} destinationName={selTrans.toCity} onClose={() => setSelTrans(null)} onAdd={addItems} />
       )}
-
-      {/* 5. Event Modal */}
-      {selectedEvent && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
-            <div className="bg-[#0074C8] text-white p-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-sm">{selectedEvent.title}</h3>
-                <div className="text-xs text-sky-100">{selectedEvent.venue}</div>
-              </div>
-              <button onClick={() => setSelectedEvent(null)} className="p-1 text-white hover:bg-white/20 rounded-full transition">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <div className="text-xs text-slate-600">{selectedEvent.description}</div>
-              <div className="text-xs font-bold uppercase text-slate-700">Chọn hạng vé:</div>
-              <div className="space-y-2">
-                {selectedEvent.tiers.map((tier) => (
-                  <div key={tier.id} className="p-3 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-xs text-slate-800">{tier.tierName}</div>
-                      <div className="text-[10px] text-slate-500">{tier.benefits.join(' • ')}</div>
-                      <div className="text-xs font-black text-rose-600 mt-1">{tier.price.toLocaleString('vi-VN')}đ</div>
-                    </div>
-                    <button
-                      onClick={() => handleBookEvent(selectedEvent, tier)}
-                      className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition shadow-2xs shrink-0 cursor-pointer"
-                    >
-                      Chọn hạng này
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      {selAct && (
+        <ActivityDetail act={selAct} trip={trip} setTrip={setTrip} destinationName={destName(selAct.destinationId)} onClose={() => setSelAct(null)} onAdd={addItems} />
+      )}
+      {selEvt && (
+        <EventDetail evt={selEvt} trip={trip} setTrip={setTrip} destinationName={destName(selEvt.destinationId)} onClose={() => setSelEvt(null)} onAdd={addItems} />
       )}
     </div>
   );

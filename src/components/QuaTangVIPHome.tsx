@@ -214,9 +214,11 @@ export const QuaTangVIPHome: React.FC = () => {
               <span className="absolute -top-1 -right-0.5 px-1.5 py-0.2 rounded-full text-[8px] font-black bg-rose-600 text-white animate-pulse shadow">
                 Mới
               </span>
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#0074C8] to-[#00A5FF] text-white flex items-center justify-center group-hover:scale-110 transition shadow-md shadow-sky-500/30 ring-2 ring-sky-200">
-                <Compass className="w-6 h-6" />
-              </div>
+              <img
+                src="/icons/di-trai-nghiem.svg"
+                alt="Đi & Trải nghiệm"
+                className="w-[52px] h-[52px] rounded-[16px] group-hover:scale-110 transition shadow-md shadow-sky-600/30"
+              />
               <span className="text-[11px] font-bold text-[#0074C8] mt-1.5 leading-tight">Đi & Trải<br />nghiệm</span>
             </button>
 
