@@ -22,7 +22,8 @@ const MainScreen: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
       ) : (
         /* Mini App "Đi & Trải nghiệm" - Điện Máy Xanh */
         <div className="w-full min-h-full flex flex-col bg-slate-50 relative">
-          <MiniAppHeader onOpenCart={onOpenCart} />
+          {/* MiniAppHeader ẩn khi đang ở màn hình Chatbot để hiển thị đúng chuẩn Native Chat Ảnh 2 */}
+          {activeTab !== 'planner' && <MiniAppHeader onOpenCart={onOpenCart} />}
 
           {/* Tab Views */}
           <div className="flex-1">

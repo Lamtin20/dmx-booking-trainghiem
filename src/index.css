@@ -23,6 +23,12 @@
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
   }
+
+  /* Chống zoom trên điện thoại khi focus vào ô chat / form input */
+  input, textarea, select {
+    font-size: 16px !important;
+    touch-action: manipulation;
+  }
 }
 
 /* Custom scrollbars */
