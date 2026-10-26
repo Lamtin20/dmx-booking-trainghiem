@@ -22,7 +22,9 @@ import {
   CreditCard, 
   ShieldCheck, 
   ShoppingBag,
-  RotateCcw
+  RotateCcw,
+  Minus,
+  Plus
 } from 'lucide-react';
 import { useDemo } from '../context/DemoContext';
 import { 
@@ -31,7 +33,7 @@ import {
   TravelProposalCardData, 
   DiscoveryContext 
 } from '../services/aiCustomerAgent';
-import { DatePickerSheet, addDays, toISO, fmtDay } from './booking/ui';
+import { DatePickerSheet, addDays, toISO, fmtDay, diffDays } from './booking/ui';
 import { STAYS, TRANSPORTS, FLIGHTS } from '../data/catalog';
 
 /* ------------------------------------------------------------------ */
@@ -60,6 +62,56 @@ export const CuteRobotAvatar: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size 
         {/* Smile */}
         <path d="M14 21 Q18 24.5 22 21" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" fill="none" />
       </svg>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Helper render markdown bold & highlights:                          */
+/* Làm nổi bật **Trợ lý du lịch**, **Ví MWG PayLater**, **0%**...    */
+/* ------------------------------------------------------------------ */
+export const FormattedChatMessage: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+
+  return (
+    <div className="space-y-1 text-xs sm:text-[13px] leading-relaxed">
+      {lines.map((line, lIdx) => {
+        // Tách các đoạn **in đậm**
+        const parts = line.split(/(\*\*.*?\*\*)/g);
+
+        return (
+          <div key={lIdx} className="min-h-[1.1rem]">
+            {parts.map((part, pIdx) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                const content = part.slice(2, -2);
+                const isHighlight = 
+                  content.includes('Trợ lý') || 
+                  content.includes('PayLater') || 
+                  content.includes('Điện Máy Xanh') || 
+                  content.includes('Quà Tặng VIP') ||
+                  content.includes('0% lãi suất') ||
+                  content.includes('0đ hôm nay');
+
+                return (
+                  <strong
+                    key={pIdx}
+                    className={`font-black ${
+                      isHighlight
+                        ? 'text-[#0071AF] bg-sky-100/70 px-1.5 py-0.5 rounded border border-sky-200/60 inline-block shadow-2xs mx-0.5'
+                        : 'text-slate-900 font-extrabold'
+                    }`}
+                  >
+                    {content}
+                  </strong>
+                );
+              }
+              return <span key={pIdx}>{part}</span>;
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -107,6 +159,28 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
     setDiscoveryCtx({ step: 'greeting' });
   }, [activePersona.id, activePersona.name, activePersona.honorific]);
 
+  // Xử lý tăng / giảm số ngày và cập nhật lại chi phí tương ứng
+  const handleAdjustDays = (msgId: string, currentCard: TravelProposalCardData, delta: number) => {
+    const newDays = currentCard.durationDays + delta;
+    if (newDays < 1 || newDays > 10) return;
+
+    const updatedCard = AiCustomerAgentService.recalculateProposalForDays(currentCard, newDays);
+
+    // Cập nhật thẻ trong messages
+    setMessages(prev => prev.map(m => {
+      if (m.id === msgId && m.proposalCard) {
+        return { ...m, proposalCard: updatedCard };
+      }
+      return m;
+    }));
+
+    if (activeProposalModal && activeProposalModal.id === currentCard.id) {
+      setActiveProposalModal(updatedCard);
+    }
+
+    showToast(`Đã cập nhật: ${updatedCard.durationDays} ngày ${updatedCard.durationNights} đêm (${updatedCard.totalEstimateFormatted})`);
+  };
+
   // Gửi tin nhắn
   const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim() || isProcessing) return;
@@ -127,7 +201,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
     setIsProcessing(true);
 
     try {
-      // Gọi service xử lý hội thoại theo chu trình Discovery
+      // Gọi service xử lý hội thoại theo chu trình Discovery toàn quốc
       const { response, newContext } = await AiCustomerAgentService.processMessage(
         userText,
         activePersona,
@@ -169,15 +243,12 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
 
   // Thêm gói du lịch vào Giỏ hàng & Mở thanh toán MWG PayLater
   const handleBookProposal = (proposal: TravelProposalCardData) => {
-    // 1. Tìm hoặc tạo Stay
-    const stay = STAYS.find(s => s.destinationId === proposal.destinationId) || STAYS[0];
-    const room = stay.rooms[0];
-
+    // 1. Lưu trú
     addToCart({
       cartItemId: `prop_stay_${Date.now()}`,
       category: 'stay',
-      partnerName: stay.partner,
-      title: `${stay.name} (${proposal.roomName})`,
+      partnerName: 'Điện Máy Xanh Du Lịch',
+      title: `${proposal.resortName} (${proposal.roomName})`,
       subtitle: `${proposal.durationDays} ngày ${proposal.durationNights} đêm • ${proposal.paxText}`,
       destinationName: proposal.destinationName,
       dateStart: selectedStartDate,
@@ -192,24 +263,26 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
       eligibleForCampaignIds: ['camp_vip10', 'camp_family200']
     });
 
-    // 2. Thêm vé di chuyển (Máy bay hoặc xe khách)
-    addToCart({
-      cartItemId: `prop_trans_${Date.now()}`,
-      category: proposal.destinationId === 'phuquoc' ? 'flight' : 'bus_train',
-      partnerName: proposal.destinationId === 'phuquoc' ? 'Vietnam Airlines' : 'Phương Trang FUTA',
-      title: `Vé khứ hồi ${proposal.destinationName} (${proposal.paxText})`,
-      subtitle: `Khởi hành ${selectedStartDate} ➔ Về ${selectedEndDate}`,
-      destinationName: proposal.destinationName,
-      dateStart: selectedStartDate,
-      quantity: proposal.adults,
-      unitPrice: Math.round(proposal.breakdown.transportAmount / proposal.adults),
-      totalPrice: proposal.breakdown.transportAmount,
-      details: {
-        departureTime: '08:30',
-        seatClass: 'Khứ hồi tiêu chuẩn'
-      },
-      eligibleForCampaignIds: ['camp_vip10']
-    });
+    // 2. Di chuyển
+    if (proposal.breakdown.transportAmount > 0) {
+      addToCart({
+        cartItemId: `prop_trans_${Date.now()}`,
+        category: proposal.destinationId === 'phuquoc' ? 'flight' : 'bus_train',
+        partnerName: proposal.destinationId === 'phuquoc' ? 'Vietnam Airlines' : 'Phương Trang FUTA',
+        title: `Vé khứ hồi ${proposal.destinationName} (${proposal.paxText})`,
+        subtitle: `Khởi hành ${selectedStartDate} ➔ Về ${selectedEndDate}`,
+        destinationName: proposal.destinationName,
+        dateStart: selectedStartDate,
+        quantity: proposal.adults,
+        unitPrice: Math.round(proposal.breakdown.transportAmount / Math.max(1, proposal.adults)),
+        totalPrice: proposal.breakdown.transportAmount,
+        details: {
+          departureTime: '08:30',
+          seatClass: 'Khứ hồi tiêu chuẩn'
+        },
+        eligibleForCampaignIds: ['camp_vip10']
+      });
+    }
 
     setActiveProposalModal(null);
     showToast(`Đã thêm trọn gói ${proposal.packageTitle} vào giỏ hàng!`);
@@ -305,12 +378,12 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
           // --- TIN NHẮN TỪ TRỢ LÝ (AGENT) ---
           return (
             <div key={msg.id} className="space-y-3">
-              {/* Lời chào / Phản hồi ngắn gọn */}
+              {/* Lời chào / Phản hồi format đậm rõ nét */}
               <div className="flex items-start gap-2.5">
                 <CuteRobotAvatar size="sm" />
                 <div className="max-w-[88%] space-y-1">
-                  <div className="bg-[#F1F5F9] text-slate-800 rounded-2xl rounded-tl-xs px-4 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-2xs whitespace-pre-line font-normal">
-                    {msg.text}
+                  <div className="bg-[#F1F5F9] text-slate-800 rounded-2xl rounded-tl-xs px-4 py-2.5 shadow-2xs font-normal">
+                    <FormattedChatMessage text={msg.text} />
                   </div>
                   <span className="text-[10px] text-slate-400 pl-1 block">{msg.timestamp}</span>
                 </div>
@@ -397,6 +470,39 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
                       {/* 5 Stars */}
                       <div className="flex items-center gap-0.5 text-amber-400 text-xs mt-1">
                         {'★'.repeat(msg.proposalCard.stars)}
+                      </div>
+                    </div>
+
+                    {/* Bộ điều chỉnh số ngày (+ / -) kèm tự động tính lại chi phí */}
+                    <div className="flex items-center justify-between bg-[#F8FAFC] border border-slate-200/90 rounded-2xl px-3.5 py-2 text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                        <Clock className="w-3.5 h-3.5 text-[#0071AF]" />
+                        <span>Thời gian:</span>
+                        <span className="font-extrabold text-[#0071AF]">
+                          {msg.proposalCard.durationDays} ngày {msg.proposalCard.durationNights} đêm
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-0.5 shadow-2xs">
+                        <button
+                          onClick={() => handleAdjustDays(msg.id, msg.proposalCard!, -1)}
+                          disabled={msg.proposalCard.durationDays <= 1}
+                          className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                          title="Giảm 1 ngày (tự giảm chi phí)"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-[11px] font-bold text-slate-600 px-1 min-w-[28px] text-center">
+                          {msg.proposalCard.durationDays}N
+                        </span>
+                        <button
+                          onClick={() => handleAdjustDays(msg.id, msg.proposalCard!, 1)}
+                          disabled={msg.proposalCard.durationDays >= 10}
+                          className="w-6 h-6 rounded-lg bg-[#FED100] hover:bg-[#E5BC00] text-[#1D2129] font-black text-xs flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer shadow-2xs"
+                          title="Tăng 1 ngày (tự tăng chi phí tương ứng)"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
 
@@ -526,7 +632,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
                 </div>
               )}
 
-              {/* Các nút bấm nhanh (Suggested Chips) dẫn dắt khách hàng */}
+              {/* Các nút bấm nhanh (Suggested Chips) dẫn dắt theo nhu cầu của khách */}
               {msg.suggestedChips && msg.suggestedChips.length > 0 && (
                 <div className="ml-1 sm:ml-9 flex flex-wrap gap-1.5 pt-1">
                   {msg.suggestedChips.map((chip, idx) => (
@@ -630,6 +736,39 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-3 flex flex-col justify-end text-white">
                   <div className="font-bold text-sm">{activeProposalModal.resortName}</div>
                   <div className="text-[11px] text-white/90">Hạng phòng: {activeProposalModal.roomName} • {activeProposalModal.amenitiesHighlight}</div>
+                </div>
+              </div>
+
+              {/* Điều chỉnh số ngày ngay trong Modal */}
+              <div className="flex items-center justify-between bg-slate-100 p-3 rounded-2xl">
+                <span className="font-bold text-slate-800">Thời lượng chuyến đi:</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const updated = AiCustomerAgentService.recalculateProposalForDays(activeProposalModal, activeProposalModal.durationDays - 1);
+                      setActiveProposalModal(updated);
+                      // Đồng bộ ra message
+                      setMessages(prev => prev.map(m => m.proposalCard?.id === updated.id ? { ...m, proposalCard: updated } : m));
+                    }}
+                    disabled={activeProposalModal.durationDays <= 1}
+                    className="w-7 h-7 rounded-lg bg-white border border-slate-300 font-black flex items-center justify-center disabled:opacity-30 cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="font-extrabold text-[#0071AF]">
+                    {activeProposalModal.durationDays} ngày {activeProposalModal.durationNights} đêm
+                  </span>
+                  <button
+                    onClick={() => {
+                      const updated = AiCustomerAgentService.recalculateProposalForDays(activeProposalModal, activeProposalModal.durationDays + 1);
+                      setActiveProposalModal(updated);
+                      setMessages(prev => prev.map(m => m.proposalCard?.id === updated.id ? { ...m, proposalCard: updated } : m));
+                    }}
+                    disabled={activeProposalModal.durationDays >= 10}
+                    className="w-7 h-7 rounded-lg bg-[#FED100] text-[#1D2129] font-black flex items-center justify-center disabled:opacity-30 cursor-pointer shadow-xs"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
@@ -737,9 +876,26 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
           onClose={() => setIsDatePickerOpen(false)}
           onApply={(start: string, end?: string) => {
             setSelectedStartDate(start);
-            if (end) setSelectedEndDate(end);
-            setIsDatePickerOpen(false);
-            handleSendMessage(`Em chọn ngày đi từ ${fmtDay(start)} đến ${end ? fmtDay(end) : ''} nhé!`);
+            if (end) {
+              setSelectedEndDate(end);
+              const daysCount = Math.max(1, diffDays(start, end) + 1);
+
+              // Tự động cập nhật số ngày trên proposal card
+              setMessages(prev => {
+                const lastWithProposal = [...prev].reverse().find(m => m.proposalCard);
+                if (lastWithProposal && lastWithProposal.proposalCard) {
+                  const updated = AiCustomerAgentService.recalculateProposalForDays(lastWithProposal.proposalCard, daysCount);
+                  return prev.map(m => m.id === lastWithProposal.id ? { ...m, proposalCard: updated } : m);
+                }
+                return prev;
+              });
+
+              setIsDatePickerOpen(false);
+              handleSendMessage(`Em chọn ngày đi từ ${fmtDay(start)} đến ${fmtDay(end)} (${daysCount} ngày) nhé!`);
+            } else {
+              setIsDatePickerOpen(false);
+              handleSendMessage(`Em chọn ngày đi ${fmtDay(start)} nhé!`);
+            }
           }}
         />
       )}
@@ -759,10 +915,10 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
 
             <div className="space-y-2 text-xs">
               {[
-                { label: 'Tiết kiệm (~10 - 12 triệu)', value: 'ngân sách 10 triệu tiết kiệm' },
-                { label: 'Tiêu chuẩn (~15 triệu)', value: 'ngân sách 15 triệu tiêu chuẩn' },
-                { label: 'Nghỉ dưỡng Vinpearl 5 sao (~20 triệu)', value: 'ngân sách 20 triệu nghỉ dưỡng Vinpearl 5 sao' },
-                { label: 'Cao cấp VIP Villa hồ bơi riêng (~25 - 30 triệu)', value: 'ngân sách 25 triệu cao cấp villa hồ bơi riêng' }
+                { label: 'Tiết kiệm (~5 - 8 triệu)', value: 'ngân sách 6 triệu tiết kiệm' },
+                { label: 'Tiêu chuẩn (~10 - 15 triệu)', value: 'ngân sách 12 triệu tiêu chuẩn' },
+                { label: 'Nghỉ dưỡng cao cấp (~20 triệu)', value: 'ngân sách 20 triệu nghỉ dưỡng' },
+                { label: 'Cao cấp VIP Villa (~25 - 30 triệu)', value: 'ngân sách 25 triệu cao cấp villa' }
               ].map((opt, i) => (
                 <button
                   key={i}
@@ -796,10 +952,10 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
 
             <div className="space-y-2 text-xs">
               {[
-                { label: 'Đổi sang khách sạn 4 sao gần trung tâm', val: 'Đổi sang khách sạn 4 sao gần trung tâm hơn' },
-                { label: 'Nâng cấp phòng hướng biển (Ocean View)', val: 'Nâng cấp phòng hướng biển trực diện' },
-                { label: 'Đổi sang chuyến bay sớm Vietnam Airlines', val: 'Đổi sang giờ bay sớm nhất của Vietnam Airlines' },
-                { label: 'Thêm vé Safari & VinWonders', val: 'Thêm vé combo Safari và VinWonders' },
+                { label: 'Đổi sang khách sạn gần trung tâm hơn', val: 'Đổi sang khách sạn gần trung tâm hơn' },
+                { label: 'Nâng cấp phòng hướng biển / view đẹp', val: 'Nâng cấp phòng hướng biển trực diện' },
+                { label: 'Đổi sang chuyến bay giờ đẹp nhất', val: 'Đổi sang giờ bay sớm nhất của Vietnam Airlines' },
+                { label: 'Thêm vé cáp treo & khu vui chơi', val: 'Thêm vé cáp treo và khu vui chơi' },
                 { label: 'Chuyển sang xe Limousine đón tận nơi', val: 'Chuyển sang xe Limousine đón tận nơi' }
               ].map((opt, i) => (
                 <button

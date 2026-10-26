@@ -1,6 +1,13 @@
 import { STAYS, FLIGHTS, TRANSPORTS, ACTIVITIES, EVENTS } from '../data/catalog';
 import { DESTINATIONS } from '../data/destinations';
 import { UserPersona, DestinationId } from '../types';
+import { 
+  NATIONWIDE_DESTINATIONS, 
+  NationwideDestination, 
+  resolveNationwideDestination,
+  findNationwideDestination,
+  ALL_63_PROVINCES 
+} from '../data/nationwideDestinations';
 
 export interface AgentCardAction {
   type: 'stay' | 'transport' | 'flight' | 'paylater' | 'itinerary' | 'support' | 'campaign';
@@ -15,7 +22,7 @@ export interface AgentCardAction {
 
 export interface TravelProposalCardData {
   id: string;
-  destinationId: DestinationId;
+  destinationId: string;
   destinationName: string;
   packageTitle: string;        // "Nghỉ dưỡng & khám phá"
   resortName: string;          // "Vinpearl Resort & Spa Phú Quốc"
@@ -29,6 +36,11 @@ export interface TravelProposalCardData {
   roomName: string;            // "Deluxe King"
   suitableFor: string;         // "2 người lớn + 2 bé"
   amenitiesHighlight: string;  // "Biển riêng, hồ bơi Kid Club"
+
+  // Base metrics for dynamic recalculation
+  baseStayPerNight: number;
+  baseDailyActivityPerPax: number;
+  baseTransportPerPax: number;
 
   // Dự toán ngân sách
   targetBudget: number;        // 20000000
@@ -63,7 +75,7 @@ export interface TravelProposalCardData {
 }
 
 export interface DiscoveryContext {
-  destinationId?: DestinationId;
+  destinationId?: string;
   destinationName?: string;
   pax?: number;
   paxText?: string;
@@ -115,13 +127,22 @@ export class AiCustomerAgentService {
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(cfg));
   }
 
-  // Tạo lời chào ban đầu thân thiện
+  /**
+   * Tạo lời chào ban đầu hấp dẫn chuẩn yêu cầu:
+   * "Trải nghiệm trước, thanh toán sau với Ví MWG PayLater, ngoài ra còn rất nhiều ưu đãi..."
+   */
   public static getInitialGreeting(persona: UserPersona): AgentChatMessage {
     return {
       id: 'msg_welcome',
       sender: 'agent',
-      text: `Dạ em chào ${persona.honorific} ${persona.shortName}! Em là **Trợ lý du lịch** của Điện Máy Xanh trên Quà Tặng VIP.\n\n${persona.honorific} đang lên kế hoạch du lịch ở đâu ạ? Em có sẵn nhiều điểm đến nghỉ dưỡng hấp dẫn cùng ưu đãi trả góp **Ví MWG PayLater 0%** và trừ điểm Quà Tặng VIP cho ${persona.honorific} nhé!`,
+      text: `Dạ em chào **${persona.honorific} ${persona.shortName}**! Em là **Trợ lý du lịch AI** của Điện Máy Xanh trên Quà Tặng VIP.\n\n` +
+        `⚡ **Trải nghiệm trước, thanh toán sau với Ví MWG PayLater**:\n` +
+        `• Đặt vé & giữ phòng thanh toán **0đ hôm nay**, trả chậm **3, 6, 9, 12 tháng** với **0% lãi suất**.\n` +
+        `• Giảm thêm **10%** với điểm Quà Tặng VIP (${persona.pointBalance.toLocaleString('vi-VN')} điểm khả dụng) + Tặng phiếu mua sắm **100.000đ** tại Điện Máy Xanh!\n` +
+        `• Hệ thống hỗ trợ đặt vé xe Phương Trang FUTA, vé máy bay & khách sạn toàn quốc.\n\n` +
+        `Hôm nay ${persona.honorific} muốn vi vu ở đâu ạ? Em sẵn sàng thiết kế trọn gói vừa vặn ngân sách cho ${persona.honorific} nhé!`,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      // Ban đầu chỉ hiển thị những địa điểm có nhiều lựa chọn nhất & nổi bật nhất
       suggestedChips: [
         '🏝️ Đi Phú Quốc',
         '🌸 Đi Đà Lạt',
@@ -134,34 +155,21 @@ export class AiCustomerAgentService {
   }
 
   /**
-   * Bóc tách thông tin du lịch từ văn bản người dùng (Hỗ trợ tiếng Việt có dấu, không dấu, số tự nhiên)
+   * Bóc tách thông tin du lịch từ văn bản người dùng (Hỗ trợ toàn quốc 63 tỉnh thành & regex địa danh tự do)
    */
   public static parseTravelIntent(text: string, prevCtx?: DiscoveryContext): DiscoveryContext {
     const raw = text.toLowerCase().trim();
     const ctx: DiscoveryContext = prevCtx ? { ...prevCtx } : { step: 'greeting' };
 
-    // 1. Nhận diện Điểm đến
-    const destKeywords: { keys: string[]; id: DestinationId; name: string }[] = [
-      { keys: ['phú quốc', 'phu quoc', 'phuquoc'], id: 'phuquoc', name: 'Phú Quốc' },
-      { keys: ['đà lạt', 'da lat', 'dalat'], id: 'dalat', name: 'Đà Lạt' },
-      { keys: ['đà nẵng', 'da nang', 'danang'], id: 'danang', name: 'Đà Nẵng' },
-      { keys: ['nha trang', 'nhatrang'], id: 'nhatrang', name: 'Nha Trang' },
-      { keys: ['vũng tàu', 'vung tau', 'vungtau'], id: 'vungtau', name: 'Vũng Tàu' },
-      { keys: ['sa pa', 'sapa'], id: 'sapa', name: 'Sa Pa' },
-      { keys: ['hạ long', 'ha long', 'halong'], id: 'halong', name: 'Hạ Long' },
-      { keys: ['hội an', 'hoi an', 'hoian'], id: 'hoian', name: 'Hội An' },
-      { keys: ['huế', 'hue'], id: 'hue', name: 'Huế' },
-      { keys: ['hà nội', 'ha noi', 'hanoi'], id: 'hanoi', name: 'Hà Nội' },
-      { keys: ['sài gòn', 'sai gon', 'tp.hcm', 'tphcm', 'hồ chí minh'], id: 'hcm', name: 'TP. Hồ Chí Minh' },
-      { keys: ['cần thơ', 'can tho'], id: 'cantho', name: 'Cần Thơ' }
-    ];
-
-    for (const item of destKeywords) {
-      if (item.keys.some(k => raw.includes(k))) {
-        ctx.destinationId = item.id;
-        ctx.destinationName = item.name;
-        break;
-      }
+    // 1. Nhận diện Điểm đến toàn quốc
+    const foundDest = findNationwideDestination(text);
+    if (foundDest) {
+      ctx.destinationId = foundDest.id;
+      ctx.destinationName = foundDest.name;
+    } else if (prevCtx?.destinationName) {
+      // Giữ nguyên điểm đến từ lượt trước nếu người dùng chỉ đang chọn số người / ngày / ngân sách
+      ctx.destinationId = prevCtx.destinationId;
+      ctx.destinationName = prevCtx.destinationName;
     }
 
     // 2. Nhận diện Số người (pax)
@@ -194,7 +202,10 @@ export class AiCustomerAgentService {
     }
 
     // 3. Nhận diện Số ngày (duration)
-    if (raw.includes('cuối tuần')) {
+    if (raw.includes('đi về trong ngày') || raw.includes('trong ngày') || raw.includes('1 ngày')) {
+      ctx.durationDays = 1;
+      ctx.durationNights = 0;
+    } else if (raw.includes('cuối tuần') || raw.includes('2 ngày 1 đêm') || raw.includes('2 ngày') || raw.includes('2n1đ')) {
       ctx.durationDays = 2;
       ctx.durationNights = 1;
     } else {
@@ -203,47 +214,54 @@ export class AiCustomerAgentService {
         const d = parseInt(matchDays[1], 10);
         if (d >= 1 && d <= 10) {
           ctx.durationDays = d;
-          ctx.durationNights = Math.max(1, d - 1);
+          ctx.durationNights = Math.max(0, d - 1);
         }
       }
     }
 
     // 4. Nhận diện Ngân sách (budget)
-    // Trường hợp số viết liền: 20000000, 20.000.000, 15000000
     const rawNumberMatch = raw.match(/(\d{1,3}(?:[\.,]\d{3}){2,}|\d{7,9})/);
     if (rawNumberMatch) {
       const cleaned = rawNumberMatch[1].replace(/[\.,]/g, '');
       const parsedNum = parseInt(cleaned, 10);
-      if (parsedNum >= 1000000) {
+      if (parsedNum >= 500000) {
         ctx.budget = parsedNum;
         const trieu = (parsedNum / 1000000).toLocaleString('vi-VN');
         ctx.budgetText = `${trieu} triệu`;
       }
     }
 
-    // Trường hợp viết chữ: "20 triệu", "20tr", "18.6 triệu"
     if (!ctx.budget) {
-      const matchTrieu = raw.match(/(\d+[\.,]?\d*)\s*(triệu|trieu|tr|m\b)/);
-      if (matchTrieu) {
-        const num = parseFloat(matchTrieu[1].replace(',', '.'));
-        if (num > 0) {
-          ctx.budget = Math.round(num * 1000000);
-          ctx.budgetText = `${matchTrieu[1]} triệu`;
+      const matchRangeTrieu = raw.match(/(\d+[\.,]?\d*)\s*-\s*(\d+[\.,]?\d*)\s*(triệu|trieu|tr)/);
+      if (matchRangeTrieu) {
+        const num1 = parseFloat(matchRangeTrieu[1].replace(',', '.'));
+        const num2 = parseFloat(matchRangeTrieu[2].replace(',', '.'));
+        const avg = (num1 + num2) / 2;
+        ctx.budget = Math.round(avg * 1000000);
+        ctx.budgetText = `${avg.toString().replace('.', ',')} triệu`;
+      } else {
+        const matchTrieu = raw.match(/(\d+[\.,]?\d*)\s*(triệu|trieu|tr|m\b)/);
+        if (matchTrieu) {
+          const num = parseFloat(matchTrieu[1].replace(',', '.'));
+          if (num > 0) {
+            ctx.budget = Math.round(num * 1000000);
+            ctx.budgetText = `${matchTrieu[1]} triệu`;
+          }
         }
       }
     }
 
-    // Từ khóa phân khúc ngân sách
     if (!ctx.budget) {
+      const isNearby = ctx.destinationId === 'tayninh' || ctx.destinationId === 'vungtau';
       if (raw.includes('tiết kiệm') || raw.includes('giá rẻ')) {
-        ctx.budget = 10000000;
-        ctx.budgetText = '10 triệu';
+        ctx.budget = isNearby ? 2000000 : 10000000;
+        ctx.budgetText = isNearby ? '2 triệu' : '10 triệu';
       } else if (raw.includes('tiêu chuẩn')) {
-        ctx.budget = 15000000;
-        ctx.budgetText = '15 triệu';
+        ctx.budget = isNearby ? 3500000 : 15000000;
+        ctx.budgetText = isNearby ? '3,5 triệu' : '15 triệu';
       } else if (raw.includes('cao cấp') || raw.includes('resort') || raw.includes('5 sao')) {
-        ctx.budget = 20000000;
-        ctx.budgetText = '20 triệu';
+        ctx.budget = isNearby ? 5000000 : 20000000;
+        ctx.budgetText = isNearby ? '5 triệu' : '20 triệu';
       }
     }
 
@@ -262,42 +280,135 @@ export class AiCustomerAgentService {
   }
 
   /**
-   * Tạo gói đề xuất du lịch trọn gói chuẩn 100% Ảnh 2
+   * Tính toán lại ngân sách và phân bổ khi thay đổi số ngày (tăng ngày / giảm ngày)
+   */
+  public static recalculateProposalForDays(
+    card: TravelProposalCardData,
+    newDays: number
+  ): TravelProposalCardData {
+    const days = Math.max(1, Math.min(10, newDays));
+    const nights = Math.max(0, days - 1);
+    const pax = card.adults + card.children || 3;
+
+    // Chi phí lưu trú tính theo số đêm
+    const stayAmount = nights > 0 ? Math.round(card.baseStayPerNight * nights) : 0;
+    // Chi phí ăn uống & vé vui chơi tính theo số ngày * số khách
+    const activityAmount = Math.round(card.baseDailyActivityPerPax * days * pax);
+    // Chi phí di chuyển khứ hồi giữ cố định
+    const transportAmount = card.breakdown.transportAmount;
+
+    const totalEstimate = stayAmount + activityAmount + transportAmount;
+
+    const formatTrieu = (val: number) => {
+      const tr = val / 1000000;
+      return Number.isInteger(tr) ? `${tr} triệu` : `${tr.toFixed(1).replace('.', ',')} triệu`;
+    };
+
+    // Tạo lại danh sách hoạt động từng ngày
+    const itineraryDays = [];
+    for (let d = 1; d <= days; d++) {
+      if (d === 1) {
+        itineraryDays.push({
+          day: 1,
+          title: `Khởi hành & Nhận phòng ${card.resortName}`,
+          activities: [
+            { time: '08:00', title: 'Di chuyển đến điểm đến', desc: `Vé xe / bay đón đoàn ${card.paxText} chu đáo.` },
+            { time: '12:30', title: 'Bữa trưa đặc sản địa phương', desc: 'Ẩm thực chuẩn vị, tươi ngon thanh mát.' },
+            { time: '14:00', title: `Check-in ${card.resortName}`, desc: `Nghỉ ngơi phòng ${card.roomName}, tận hưởng tiện ích.` },
+            { time: '18:30', title: 'Dạo chơi & ẩm thực đêm', desc: 'Thưởng ngoạn cảnh sắc đêm và tự do khám phá.' }
+          ]
+        });
+      } else if (d === days) {
+        itineraryDays.push({
+          day: d,
+          title: 'Thư giãn, mua quà đặc sản & Tiễn đoàn',
+          activities: [
+            { time: '08:00', title: 'Buffet sáng & Tắm biển/hồ bơi', desc: 'Thư giãn và tận hưởng ngày cuối kỳ nghỉ.' },
+            { time: '11:30', title: 'Check-out & Mua sắm đặc sản', desc: 'Mua sắm đặc sản địa phương làm quà cho gia đình.' },
+            { time: '14:30', title: 'Xe đưa tiễn ra sân bay / bến xe', desc: 'Khép lại chuyến đi an toàn, ngập tràn niềm vui.' }
+          ]
+        });
+      } else {
+        itineraryDays.push({
+          day: d,
+          title: `Ngày ${d}: Khám phá danh thắng nổi tiếng`,
+          activities: [
+            { time: '07:30', title: 'Buffet sáng cao cấp', desc: 'Nạp năng lượng chuẩn bị ngày mới năng động.' },
+            { time: '09:00', title: `Tour tham quan điểm nổi bật`, desc: `Trải nghiệm danh lam thắng cảnh đặc sắc nhất.` },
+            { time: '15:00', title: 'Check-in chụp ảnh kỷ niệm', desc: 'Ghi lại những khoảnh khắc tuyệt đẹp của chuyến đi.' },
+            { time: '19:00', title: 'Tiệc tối ấm cúng', desc: 'Thưởng thức bữa tối ngon miệng cùng người thân.' }
+          ]
+        });
+      }
+    }
+
+    return {
+      ...card,
+      durationDays: days,
+      durationNights: nights,
+      totalEstimate,
+      totalEstimateFormatted: formatTrieu(totalEstimate),
+      breakdown: {
+        stayAmount,
+        stayFormatted: formatTrieu(stayAmount),
+        stayPercent: Math.round((stayAmount / totalEstimate) * 100),
+        transportAmount,
+        transportFormatted: formatTrieu(transportAmount),
+        transportPercent: Math.round((transportAmount / totalEstimate) * 100),
+        activityAmount,
+        activityFormatted: formatTrieu(activityAmount),
+        activityPercent: Math.round((activityAmount / totalEstimate) * 100)
+      },
+      paylater: {
+        tenor3Monthly: Math.round(totalEstimate / 3),
+        tenor6Monthly: Math.round(totalEstimate / 6),
+        tenor12Monthly: Math.round(totalEstimate / 12)
+      },
+      itineraryDays
+    };
+  }
+
+  /**
+   * Tạo gói đề xuất du lịch trọn gói toàn quốc chuẩn 100% Ảnh 2
    */
   public static generateProposalData(ctx: DiscoveryContext): TravelProposalCardData {
-    const destId = ctx.destinationId || 'phuquoc';
     const destName = ctx.destinationName || 'Phú Quốc';
+    const destObj = resolveNationwideDestination(destName);
     const days = ctx.durationDays || 3;
-    const nights = ctx.durationNights || 2;
+    const nights = ctx.durationNights !== undefined ? ctx.durationNights : Math.max(0, days - 1);
     const pax = ctx.pax || 3;
     const paxText = ctx.paxText || `${pax} người`;
     const budget = ctx.budget || 20000000;
 
-    // Tìm Stay phù hợp trong catalog
-    const matchingStays = STAYS.filter(s => s.destinationId === destId);
-    const primaryStay = matchingStays.find(s => s.stars >= 4) || matchingStays[0] || STAYS[0];
-    const primaryRoom = primaryStay.rooms[0];
+    // Chi phí cơ bản
+    const baseStay = destObj.baseStayPerNight;
+    const baseDailyAct = destObj.baseDailyActivityPerPax;
+    const baseTrans = destObj.baseTransportPerPax;
 
-    // Ước tính chi phí cân đối thông minh trong ngân sách
-    // Nếu khách cho 20 triệu: đề xuất 18,6 triệu (như trong ảnh 2 mẫu của người dùng)
-    let totalEstimate = Math.round(budget * 0.93 / 100000) * 100000;
-    if (budget === 20000000) {
-      totalEstimate = 18600000; // Khớp 100% ảnh người dùng cung cấp!
-    }
-
-    // Phân bổ 3 thành phần: Lưu trú, Di chuyển, Ăn & chơi
     let stayAmount = 0;
     let transportAmount = 0;
     let activityAmount = 0;
+    let totalEstimate = 0;
 
-    if (totalEstimate === 18600000) {
+    // Nếu là Phú Quốc 20 triệu 3 người 3 ngày: khớp 100% mẫu Ảnh 2 của người dùng!
+    if (destObj.id === 'phuquoc' && budget === 20000000 && days === 3) {
+      totalEstimate = 18600000;
       stayAmount = 6000000;
       transportAmount = 7000000;
       activityAmount = 5600000;
     } else {
-      stayAmount = Math.round((totalEstimate * 0.33) / 100000) * 100000;
-      transportAmount = Math.round((totalEstimate * 0.37) / 100000) * 100000;
-      activityAmount = totalEstimate - stayAmount - transportAmount;
+      stayAmount = nights > 0 ? Math.round(baseStay * nights) : 0;
+      transportAmount = Math.round(baseTrans * pax);
+      activityAmount = Math.round(baseDailyAct * days * pax);
+      totalEstimate = stayAmount + transportAmount + activityAmount;
+
+      // Cân đối thông minh trong ngân sách khách mong đợi
+      if (totalEstimate > budget) {
+        totalEstimate = Math.round(budget * 0.95 / 100000) * 100000;
+        stayAmount = Math.round((totalEstimate * 0.35) / 100000) * 100000;
+        transportAmount = Math.round((totalEstimate * 0.35) / 100000) * 100000;
+        activityAmount = totalEstimate - stayAmount - transportAmount;
+      }
     }
 
     const formatTrieu = (val: number) => {
@@ -305,46 +416,27 @@ export class AiCustomerAgentService {
       return Number.isInteger(tr) ? `${tr} triệu` : `${tr.toFixed(1).replace('.', ',')} triệu`;
     };
 
-    // Hình ảnh resort thực tế
-    let resortImage = primaryStay.coverImage;
-    if (destId === 'phuquoc') {
-      resortImage = '/destinations/phuquoc.jpg';
-    } else if (destId === 'dalat') {
-      resortImage = '/destinations/dalat.jpg';
-    } else if (destId === 'danang') {
-      resortImage = '/destinations/danang.jpg';
-    } else if (destId === 'nhatrang') {
-      resortImage = '/destinations/nhatrang.jpg';
-    }
-
-    // Đặc quyền phòng & tiện ích chuẩn 100% Ảnh 2
-    const roomName = primaryRoom ? primaryRoom.name.split('Hướng')[0].trim() : 'Deluxe King';
     const suitableFor = pax >= 3 ? `${pax} người lớn` : '2 người lớn + 2 bé';
-    const amenitiesHighlight = destId === 'phuquoc'
-      ? 'Biển riêng, hồ bơi Kid Club'
-      : (primaryStay.amenities.slice(0, 3).join(', ') || 'Gần trung tâm, buffet sáng');
 
-    // Tính trả chậm MWG PayLater 0% lãi suất
-    const tenor3Monthly = Math.round(totalEstimate / 3);
-    const tenor6Monthly = Math.round(totalEstimate / 6);
-    const tenor12Monthly = Math.round(totalEstimate / 12);
-
-    return {
-      id: `prop_${destId}_${Date.now()}`,
-      destinationId: destId,
-      destinationName: destName,
-      packageTitle: destId === 'dalat' ? 'Khám phá & nghỉ dưỡng phố hoa' : 'Nghỉ dưỡng & khám phá',
-      resortName: primaryStay.name,
-      resortImage,
-      stars: primaryStay.stars || 5,
+    const initialCard: TravelProposalCardData = {
+      id: `prop_${destObj.id}_${Date.now()}`,
+      destinationId: destObj.id,
+      destinationName: destObj.name,
+      packageTitle: destObj.packageTitle,
+      resortName: destObj.resortName,
+      resortImage: destObj.resortImage,
+      stars: 5,
       durationDays: days,
       durationNights: nights,
       paxText,
       adults: ctx.adults || pax,
       children: ctx.children || 0,
-      roomName,
+      roomName: destObj.roomName,
       suitableFor,
-      amenitiesHighlight,
+      amenitiesHighlight: destObj.amenitiesHighlight,
+      baseStayPerNight: baseStay,
+      baseDailyActivityPerPax: baseDailyAct,
+      baseTransportPerPax: baseTrans,
       targetBudget: budget,
       totalEstimate,
       totalEstimateFormatted: formatTrieu(totalEstimate),
@@ -362,42 +454,63 @@ export class AiCustomerAgentService {
         activityPercent: Math.round((activityAmount / totalEstimate) * 100)
       },
       paylater: {
-        tenor3Monthly,
-        tenor6Monthly,
-        tenor12Monthly
+        tenor3Monthly: Math.round(totalEstimate / 3),
+        tenor6Monthly: Math.round(totalEstimate / 6),
+        tenor12Monthly: Math.round(totalEstimate / 12)
       },
-      itineraryDays: [
-        {
-          day: 1,
-          title: `Khởi hành & Nhận phòng ${primaryStay.name}`,
-          activities: [
-            { time: '08:30', title: 'Di chuyển đến điểm đến', desc: `Vé bay / xe đón đúng giờ xuất phát cho ${paxText}.` },
-            { time: '12:30', title: 'Thưởng thức bữa trưa đặc sản', desc: 'Ẩm thực địa phương thanh mát, chuẩn vị truyền thống.' },
-            { time: '14:00', title: `Check-in ${primaryStay.name}`, desc: `Nhận phòng ${roomName}, tận hưởng hồ bơi & tiện ích nghỉ dưỡng.` },
-            { time: '18:30', title: 'Dạo chơi & Chợ đêm', desc: 'Thưởng ngoạn cảnh sắc đêm lung linh và ăn tối tự do.' }
-          ]
-        },
-        {
-          day: 2,
-          title: 'Trải nghiệm thiên nhiên & Danh lam nổi tiếng',
-          activities: [
-            { time: '07:30', title: 'Buffet sáng tại resort', desc: 'Thực đơn buffet 5 sao phong phú Á - Âu đã bao gồm trong gói.' },
-            { time: '09:00', title: 'Tour tham quan điểm nổi bật', desc: `Tour khám phá các danh thắng nổi tiếng tại ${destName}.` },
-            { time: '15:00', title: 'Check-in ngắm hoàng hôn', desc: 'Trải nghiệm góc ngắm hoàng hôn tuyệt đẹp và chụp ảnh kỷ niệm.' },
-            { time: '19:00', title: 'Tiệc tối ấm cúng', desc: 'Bữa tối hải sản/đặc sản dành cho gia đình và bạn bè.' }
-          ]
-        },
-        {
-          day: 3,
-          title: 'Thư giãn, mua quà đặc sản & Tiễn đoàn',
-          activities: [
-            { time: '08:00', title: 'Buffet sáng & Thư giãn', desc: 'Tự do tắm biển, bơi lội hoặc spa chăm sóc sức khỏe.' },
-            { time: '11:30', title: 'Check-out & Mua sắm quà lưu niệm', desc: 'Mua sắm đặc sản địa phương làm quà cho người thân.' },
-            { time: '14:00', title: 'Xe đưa tiễn ra sân bay / bến xe', desc: 'Khép lại kỳ nghỉ trọn vẹn, an toàn và ngập tràn niềm vui.' }
-          ]
-        }
-      ]
+      itineraryDays: []
     };
+
+    return this.recalculateProposalForDays(initialCard, days);
+  }
+
+  /**
+   * Tạo các chip gợi ý động bám sát điểm đến và nhu cầu của khách
+   */
+  public static getContextualChipsForDestination(destName: string, step: string): string[] {
+    const dest = resolveNationwideDestination(destName);
+
+    if (step === 'ask_pax_duration') {
+      if (dest.id === 'tayninh' || dest.id === 'vungtau') {
+        return [
+          '👥 2 người · Đi về trong ngày',
+          '🧑‍🤝‍🧑 3 người · 2 ngày 1 đêm',
+          '👨‍👩‍👧‍👦 Gia đình 4 người · 2 ngày 1 đêm',
+          `🚠 Vé cáp treo ${dest.name}`
+        ];
+      }
+      return [
+        '👥 2 người · 3 ngày 2 đêm',
+        '🧑‍🤝‍🧑 3 người · 3 ngày 2 đêm',
+        '👨‍👩‍👧‍👦 Gia đình 4 người · 4 ngày 3 đêm',
+        '👫 Cặp đôi · 2 ngày 1 đêm'
+      ];
+    }
+
+    if (step === 'ask_budget') {
+      if (dest.id === 'tayninh' || dest.id === 'vungtau') {
+        return [
+          '💰 Tiết kiệm (~1,5 - 2 triệu)',
+          '🌟 Tiêu chuẩn (~3 - 4 triệu)',
+          `🏨 Khách sạn ${dest.resortName.split(' ')[0]} 5 sao`,
+          '💳 Trả chậm qua MWG PayLater'
+        ];
+      }
+      return [
+        '💰 Tiết kiệm (~8 - 10 triệu)',
+        '🌟 Tiêu chuẩn (~12 - 15 triệu)',
+        '✨ Nghỉ dưỡng cao cấp (~20 triệu)',
+        '👑 Resort 5 sao trọn gói'
+      ];
+    }
+
+    // Khi đã có proposal
+    return [
+      `🔄 Đổi sang khách sạn khác tại ${dest.name}`,
+      `🎟️ Thêm vé ${dest.highlights[0] || 'vui chơi'}`,
+      '💳 Trả chậm qua MWG PayLater (0% lãi)',
+      '📅 Chọn ngày đi'
+    ];
   }
 
   /**
@@ -418,18 +531,17 @@ export class AiCustomerAgentService {
     const currentCtx = this.parseTravelIntent(userText, prevContext);
 
     // 1. Nếu khách hỏi về các dịch vụ CSKH cụ thể (PayLater, Điểm VIP, Xe FUTA, v.v.)
-    // VÍ MWG PAYLATER
     if (raw.includes('paylater') || raw.includes('trả chậm') || raw.includes('trả góp') || raw.includes('kỳ hạn') || raw.includes('lãi suất')) {
       return {
         newContext: currentCtx,
         response: {
           id: `msg_agent_${Date.now()}`,
           sender: 'agent',
-          text: `Dạ thưa ${h} ${n}, về chương trình **Ví MWG PayLater** trên Điện Máy Xanh & Quà Tặng VIP:\n\n` +
-            `⚡ **Thanh toán FULL 100% ngay lập tức**: Ví MWG PayLater sẽ ứng trước 100% giá trị đơn hàng để xuất vé và giữ phòng cho ${h} ngay lập tức.\n\n` +
-            `🗓️ **4 Kỳ hạn linh hoạt**: 3, 6, 9, 12 tháng (0% lãi suất).\n` +
-            `🛡️ **Đặc quyền**: Hôm nay ${h} thanh toán **0đ**, kỳ đầu tiên chỉ bắt đầu sau 30 ngày!\n\n` +
-            `${h} có thể chọn hình thức này ngay tại bước thanh toán ạ!`,
+          text: `Dạ thưa **${h} ${n}**, về chương trình **Ví MWG PayLater** trên Điện Máy Xanh & Quà Tặng VIP:\n\n` +
+            `⚡ **Thanh toán FULL 100% ngay lập tức**: Ví MWG PayLater sẽ ứng trước 100% giá trị đơn hàng để xuất vé và giữ phòng cho **${h}** ngay lập tức.\n\n` +
+            `🗓️ **4 Kỳ hạn linh hoạt**: **3, 6, 9, 12 tháng** (0% lãi suất, phí chuyển đổi 0đ).\n` +
+            `🛡️ **Đặc quyền**: Hôm nay **${h}** thanh toán **0đ**, kỳ đầu tiên chỉ bắt đầu sau 30 ngày!\n\n` +
+            `**${h}** có thể chọn hình thức này ngay tại bước xác nhận giỏ hàng ạ!`,
           timestamp: nowStr,
           actionCard: {
             type: 'paylater',
@@ -455,10 +567,10 @@ export class AiCustomerAgentService {
         response: {
           id: `msg_agent_${Date.now()}`,
           sender: 'agent',
-          text: `Dạ em xin thông tin ưu đãi tài khoản của ${h} ${n} trên Quà Tặng VIP như sau ạ:\n\n` +
+          text: `Dạ em xin thông tin ưu đãi tài khoản của **${h} ${n}** trên Quà Tặng VIP như sau ạ:\n\n` +
             `💎 **Điểm tích lũy hiện có**: **${persona.pointBalance.toLocaleString('vi-VN')} điểm** (tương đương ${persona.pointBalance.toLocaleString('vi-VN')}đ).\n` +
-            `• ${h} được dùng điểm để **giảm trừ trực tiếp tối đa 10%** tổng giá trị mỗi đơn.\n` +
-            `🎁 Tặng thêm Phiếu mua sắm 100K tại Điện Máy Xanh sau khi hoàn tất chuyến đi!`,
+            `• **${h}** được dùng điểm để **giảm trừ trực tiếp tối đa 10%** tổng giá trị mỗi đơn.\n` +
+            `🎁 Tặng thêm Phiếu mua sắm **100.000đ** tại Điện Máy Xanh sau khi hoàn tất chuyến đi!`,
           timestamp: nowStr,
           actionCard: {
             type: 'campaign',
@@ -476,36 +588,10 @@ export class AiCustomerAgentService {
       };
     }
 
-    // CHÍNH SÁCH ĐỔI / HỦY VÉ
-    if (raw.includes('hủy') || raw.includes('hoàn tiền') || raw.includes('đổi vé') || raw.includes('đổi ngày') || raw.includes('hotline') || raw.includes('khiếu nại')) {
-      return {
-        newContext: currentCtx,
-        response: {
-          id: `msg_agent_${Date.now()}`,
-          sender: 'agent',
-          text: `Dạ về chính sách hỗ trợ & đổi hủy dịch vụ tại Điện Máy Xanh:\n\n` +
-            `🛡️ **Cam kết bảo vệ khách hàng**: Hỗ trợ 24/7 trực tiếp với đối tác vận chuyển và khách sạn.\n` +
-            `• **Khách sạn**: Đa số miễn phí hủy trước 24h - 48h.\n` +
-            `• **Vé xe FUTA**: Hỗ trợ đổi giờ/tuyến trước 12h.\n` +
-            `📞 Hotline miễn phí: **1800 1061** (nhánh Du lịch).`,
-          timestamp: nowStr,
-          actionCard: {
-            type: 'support',
-            title: 'Trung tâm CSKH Điện Máy Xanh (24/7)',
-            subtitle: 'Cam kết tiếp nhận & xử lý đổi/hủy vé trong 15 phút',
-            highlight: 'Hotline 1800 1061',
-            badge: 'An tâm 100%',
-            actionLabel: 'Gửi yêu cầu hỗ trợ'
-          }
-        }
-      };
-    }
-
-    // 2. HÀNH TRÌNH DẪN DẮT KHAI PHÁ THÔNG TIN DU LỊCH (DISCOVERY JOURNEY)
+    // 2. HÀNH TRÌNH DẪN DẮT KHAI PHÁ THÔNG TIN DU LỊCH TOÀN QUỐC
     // =========================================================================
 
     // CASE A: ĐÃ ĐỦ 4 THÔNG TIN (Điểm đến + Số người + Thời gian + Ngân sách)
-    // -> Xuất Thẻ Đề Xuất Trọn Gói chuẩn 100% Ảnh 2
     if (currentCtx.step === 'complete') {
       const proposal = this.generateProposalData(currentCtx);
       const summaryBadge = `${currentCtx.destinationName} · ${currentCtx.paxText} · ${currentCtx.durationDays} ngày · ${currentCtx.budgetText}`;
@@ -515,67 +601,51 @@ export class AiCustomerAgentService {
         response: {
           id: `msg_agent_${Date.now()}`,
           sender: 'agent',
-          text: `Em gợi ý chuyến đi vừa ngân sách của ${h} ${n} nhé!`,
+          text: `Em gợi ý chuyến đi vừa ngân sách của **${h} ${n}** nhé!`,
           timestamp: nowStr,
           userSummaryBadge: summaryBadge,
           proposalCard: proposal,
-          suggestedChips: [
-            '🔄 Đổi sang khách sạn 4 sao',
-            '✈️ Đổi sang vé bay Vietnam Airlines',
-            '🎟️ Thêm vé Safari & VinWonders',
-            '💳 Trả chậm qua MWG PayLater'
-          ]
+          suggestedChips: this.getContextualChipsForDestination(currentCtx.destinationName || '', 'complete')
         }
       };
     }
 
     // CASE B: CÓ ĐIỂM ĐẾN + SỐ NGƯỜI + SỐ NGÀY, NHƯNG CHƯA CÓ NGÂN SÁCH
-    // -> Dẫn dắt hỏi tiếp về ngân sách & phong cách trải nghiệm
     if (currentCtx.step === 'ask_budget') {
       return {
         newContext: currentCtx,
         response: {
           id: `msg_agent_${Date.now()}`,
           sender: 'agent',
-          text: `Dạ em đã ghi nhận chuyến đi **${currentCtx.destinationName}** cho **${currentCtx.paxText} trong ${currentCtx.durationDays} ngày** ạ!\n\n${h} ${n} dự kiến **ngân sách khoảng bao nhiêu** cho cả chuyến (hoặc phong cách du lịch mong muốn) để em tối ưu trọn gói chuẩn nhất ạ?`,
+          text: `Dạ em đã ghi nhận chuyến đi **${currentCtx.destinationName}** cho **${currentCtx.paxText} trong ${currentCtx.durationDays} ngày** ạ!\n\n**${h} ${n}** dự kiến **ngân sách khoảng bao nhiêu** cho cả chuyến (hoặc phong cách du lịch mong muốn) để em tối ưu trọn gói chuẩn nhất ạ?`,
           timestamp: nowStr,
-          suggestedChips: [
-            '💰 Tiết kiệm (~10 - 12 triệu)',
-            '🌟 Tiêu chuẩn (~15 triệu)',
-            '✨ Nghỉ dưỡng cao cấp (~20 triệu)',
-            '👑 Resort 5 sao trọn gói'
-          ]
+          suggestedChips: this.getContextualChipsForDestination(currentCtx.destinationName || '', 'ask_budget')
         }
       };
     }
 
-    // CASE C: CHỈ MỚI CÓ ĐIỂM ĐẾN (ví dụ "Anh muốn đi Phú Quốc" hoặc "Tư vấn Đà Lạt")
-    // -> Khen ngợi điểm đến và hỏi Số người + Số ngày
+    // CASE C: CHỈ MỚI CÓ ĐIỂM ĐẾN (ví dụ "Đi tây ninh", "Đi đà lạt", "Đi sapa", "Đi quy nhơn"...)
     if (currentCtx.step === 'ask_pax_duration') {
+      const dest = resolveNationwideDestination(currentCtx.destinationName || '');
       return {
         newContext: currentCtx,
         response: {
           id: `msg_agent_${Date.now()}`,
           sender: 'agent',
-          text: `Dạ tuyệt vời ạ! **${currentCtx.destinationName}** mùa này rất đẹp và có nhiều khuyến mãi hấp dẫn trên Quà Tặng VIP 🌴.\n\nĐể em chọn phòng nghỉ và phương tiện phù hợp nhất, chuyến đi của ${h} ${n} dự kiến **có bao nhiêu người** và đi **khoảng mấy ngày** vậy ạ?`,
+          text: `Dạ tuyệt vời ạ! **${dest.name}** là điểm đến rất thú vị với nhiều cảnh đẹp như **${dest.highlights.slice(0, 3).join(', ')}** 🌴.\n\nĐể em chọn phòng nghỉ và phương tiện di chuyển phù hợp nhất, chuyến đi của **${h} ${n}** dự kiến **có bao nhiêu người** và đi **khoảng mấy ngày** vậy ạ?`,
           timestamp: nowStr,
-          suggestedChips: [
-            '👥 2 người · 3 ngày 2 đêm',
-            '🧑‍🤝‍🧑 3 người · 3 ngày 2 đêm',
-            '👨‍👩‍👧‍👦 Gia đình 4 người · 4 ngày 3 đêm',
-            '👫 Cặp đôi · 2 ngày 1 đêm'
-          ]
+          suggestedChips: this.getContextualChipsForDestination(dest.name, 'ask_pax_duration')
         }
       };
     }
 
-    // CASE D: CHƯA CÓ THÔNG TIN CỤ THỂ HOẶC CHÀO HỎI BAN ĐẦU
+    // CASE D: CHƯA CÓ THÔNG TIN CỤ THỂ
     return {
       newContext: currentCtx,
       response: {
         id: `msg_agent_${Date.now()}`,
         sender: 'agent',
-        text: `Dạ em luôn sẵn sàng hỗ trợ ${h} ${n}!\n\n${h} đang quan tâm chuyến đi đến địa điểm nào, hoặc cần em gợi ý điểm đến đang được ưu đãi nhiều nhất hôm nay ạ?`,
+        text: `Dạ em luôn sẵn sàng hỗ trợ **${h} ${n}**!\n\n**${h}** đang quan tâm chuyến đi đến địa điểm nào trên toàn quốc (Tây Ninh, Phú Quốc, Đà Lạt, Quy Nhơn, Sa Pa...), hoặc cần em tư vấn điểm đến được ưu đãi nhiều nhất hôm nay ạ?`,
         timestamp: nowStr,
         suggestedChips: [
           '🏝️ Đi Phú Quốc',

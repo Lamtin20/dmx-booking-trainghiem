@@ -56,15 +56,6 @@ export const DeviceFrameWrapper: React.FC<DeviceFrameWrapperProps> = ({ children
           {children}
         </div>
 
-        {/* Floating Quick Control Button: Nút tròn nhỏ tinh tế ở góc dưới trái phía trên tabbar, không chiếm diện tích hay đè ô chat */}
-        <button
-          onClick={() => setShowControlCenter(true)}
-          className="fixed bottom-24 left-3 z-40 w-7 h-7 rounded-full bg-slate-900/40 backdrop-blur text-white flex items-center justify-center text-[10px] shadow-sm border border-white/20 opacity-30 hover:opacity-100 transition cursor-pointer"
-          title="Mở Control Center kiểm thử"
-        >
-          ⚙️
-        </button>
-
         {/* Toast */}
         {toastMessage && (
           <div className="fixed bottom-16 left-4 right-4 bg-slate-900/95 text-white text-xs px-4 py-3 rounded-2xl shadow-2xl border border-sky-500/40 z-50 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5">
