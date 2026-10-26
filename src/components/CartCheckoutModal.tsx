@@ -136,8 +136,10 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({ isOpen, on
               {completedOrder.paymentMethod === 'mwg_paylater' && (
                 <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3.5 text-left space-y-1.5 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs text-emerald-950 flex items-center gap-1.5">
-                      <CreditCard className="w-4 h-4 text-emerald-700" />
+                    <span className="font-extrabold text-xs text-emerald-950 flex items-center gap-2">
+                      <div className="w-8 h-5 rounded bg-[#FED100] border border-amber-300 flex items-center justify-center p-0.5 shrink-0 shadow-2xs">
+                        <img src="/logos/mwg.png" alt="MWG" className="w-full h-full object-contain" />
+                      </div>
                       Ví MWG PayLater (Kỳ hạn {completedOrder.paylaterTenure} tháng)
                     </span>
                     <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
@@ -387,71 +389,75 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({ isOpen, on
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 text-xs">
+                  {/* MWG PayLater */}
                   <button
                     onClick={() => setPaymentMethod('mwg_paylater')}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
                       paymentMethod === 'mwg_paylater' 
-                        ? 'border-[#0074C8] bg-sky-50 text-[#0074C8] font-bold ring-2 ring-[#0074C8]' 
-                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                        ? 'border-[#0071AF] bg-sky-50 text-[#0071AF] font-bold ring-2 ring-[#0071AF]' 
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                     }`}
                   >
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-black text-xs shrink-0">
-                      MWG
+                    <div className="w-10 h-7 rounded-lg bg-[#FED100] border border-amber-300/80 flex items-center justify-center shrink-0 p-1 overflow-hidden shadow-2xs">
+                      <img src="/logos/mwg.png" alt="MWG" className="w-full h-full object-contain" />
                     </div>
-                    <div>
-                      <div className="font-extrabold text-slate-900 leading-tight">Ví MWG PayLater</div>
-                      <div className="text-[10px] text-emerald-600 font-bold">Thanh toán Full 100%</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-extrabold text-slate-900 leading-tight truncate">Ví MWG PayLater</div>
+                      <div className="text-[10px] text-emerald-600 font-bold truncate">Thanh toán Full 100%</div>
                     </div>
                   </button>
 
+                  {/* MoMo */}
                   <button
                     onClick={() => setPaymentMethod('momo')}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
                       paymentMethod === 'momo' 
-                        ? 'border-[#0074C8] bg-sky-50 text-[#0074C8] font-bold ring-2 ring-[#0074C8]' 
-                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                        ? 'border-[#0071AF] bg-sky-50 text-[#0071AF] font-bold ring-2 ring-[#0071AF]' 
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                     }`}
                   >
-                    <span className="w-7 h-7 rounded-lg bg-pink-500 text-white text-xs font-black flex items-center justify-center shrink-0">
-                      MoMo
-                    </span>
-                    <div>
-                      <div className="font-bold text-slate-900">Ví MoMo</div>
-                      <div className="text-[10px] text-slate-500">Quét mã MoMo</div>
+                    <div className="w-10 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 p-0.5 overflow-hidden shadow-2xs">
+                      <img src="/logos/momo.svg" alt="MoMo" className="h-6 w-6 object-contain rounded" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-900 leading-tight truncate">Ví MoMo</div>
+                      <div className="text-[10px] text-slate-500 truncate">Quét mã MoMo</div>
                     </div>
                   </button>
 
+                  {/* VNPAY-QR */}
                   <button
                     onClick={() => setPaymentMethod('vnpay')}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
                       paymentMethod === 'vnpay' 
-                        ? 'border-[#0074C8] bg-sky-50 text-[#0074C8] font-bold ring-2 ring-[#0074C8]' 
-                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                        ? 'border-[#0071AF] bg-sky-50 text-[#0071AF] font-bold ring-2 ring-[#0071AF]' 
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                     }`}
                   >
-                    <span className="w-7 h-7 rounded-lg bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                      VNPAY
-                    </span>
-                    <div>
-                      <div className="font-bold text-slate-900">VNPAY-QR</div>
-                      <div className="text-[10px] text-slate-500">Mã QR ngân hàng</div>
+                    <div className="w-10 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 px-1 py-0.5 overflow-hidden shadow-2xs">
+                      <img src="/logos/vnpay.svg" alt="VNPAY" className="w-full h-full object-contain" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-900 leading-tight truncate">VNPAY-QR</div>
+                      <div className="text-[10px] text-slate-500 truncate">Mã QR ngân hàng</div>
                     </div>
                   </button>
 
+                  {/* VietQR */}
                   <button
                     onClick={() => setPaymentMethod('vietqr')}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
                       paymentMethod === 'vietqr' 
-                        ? 'border-[#0074C8] bg-sky-50 text-[#0074C8] font-bold ring-2 ring-[#0074C8]' 
-                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                        ? 'border-[#0071AF] bg-sky-50 text-[#0071AF] font-bold ring-2 ring-[#0071AF]' 
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                     }`}
                   >
-                    <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                      VietQR
-                    </span>
-                    <div>
-                      <div className="font-bold text-slate-900">Chuyển khoản</div>
-                      <div className="text-[10px] text-slate-500">24/7 tự động</div>
+                    <div className="w-10 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 p-0.5 overflow-hidden shadow-2xs">
+                      <img src="/logos/vietqr.svg" alt="VietQR" className="w-full h-full object-contain" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-900 leading-tight truncate">Chuyển khoản</div>
+                      <div className="text-[10px] text-slate-500 truncate">VietQR 24/7 tự động</div>
                     </div>
                   </button>
                 </div>

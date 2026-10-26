@@ -313,9 +313,14 @@ export const TripsTab: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
                 </div>
 
                 {selectedOrder.paymentMethod === 'mwg_paylater' && (
-                  <div className="mt-2 bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-[11px] text-emerald-900 font-bold space-y-0.5">
+                  <div className="mt-2 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-[11px] text-emerald-900 font-bold space-y-1">
                     <div className="flex items-center justify-between text-emerald-800">
-                      <span>Ví MWG PayLater (Kỳ hạn {selectedOrder.paylaterTenure || 6} tháng)</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-7 h-4 rounded bg-[#FED100] border border-amber-300 inline-flex items-center justify-center p-0.5 shrink-0">
+                          <img src="/logos/mwg.png" alt="MWG" className="w-full h-full object-contain" />
+                        </span>
+                        Ví MWG PayLater (Kỳ hạn {selectedOrder.paylaterTenure || 6} tháng)
+                      </span>
                       <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-black">FULL 100%</span>
                     </div>
                     <div className="text-[10px] text-emerald-700 font-medium">
