@@ -18,9 +18,11 @@ import {
   Clock, 
   Ticket, 
   Sparkles,
-  Heart
+  Heart,
+  Film
 } from 'lucide-react';
 import { useDemo } from '../context/DemoContext';
+import { CinemaBookingSystem } from './booking/CinemaBookingSystem';
 
 export const QuaTangVIPHome: React.FC = () => {
   const { 
@@ -34,6 +36,7 @@ export const QuaTangVIPHome: React.FC = () => {
   } = useDemo();
 
   const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false);
+  const [showCinemaSystem, setShowCinemaSystem] = useState<boolean>(false);
   const [tempName, setTempName] = useState<string>(activePersona.name);
   const [tempHonorific, setTempHonorific] = useState<'Anh' | 'Chị' | 'Bạn'>(activePersona.honorific);
 
@@ -205,6 +208,7 @@ export const QuaTangVIPHome: React.FC = () => {
 
             {/* 5. CỔNG MINI APP CHỦ ĐẠO: "Đi & Trải nghiệm" (Điện Máy Xanh) */}
             <button 
+              data-testid="di-trai-nghiem-btn"
               onClick={() => {
                 setIsInsideMiniApp(true);
                 setActiveTab('explore');
@@ -222,7 +226,23 @@ export const QuaTangVIPHome: React.FC = () => {
               <span className="text-[11px] font-bold text-[#0074C8] mt-1.5 leading-tight">Đi & Trải<br />nghiệm</span>
             </button>
 
-            {/* 6. Dịch vụ tiện ích */}
+            {/* 6. VÉ XEM PHIM - HỆ THỐNG ĐẶT VÉ LIÊN RẠP (CGV, Lotte, Galaxy, BHD, Beta) */}
+            <button 
+              data-testid="cinema-btn"
+              title="Vé xem phim"
+              onClick={() => setShowCinemaSystem(true)}
+              className="flex flex-col items-center group cursor-pointer relative"
+            >
+              <span className="absolute -top-1 -right-0.5 px-1.5 py-0.2 rounded-full text-[8px] font-black bg-rose-600 text-white animate-pulse shadow">
+                HOT
+              </span>
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-600 to-indigo-600 text-white flex items-center justify-center group-hover:scale-110 transition shadow-md shadow-rose-500/30">
+                <Film className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <span className="text-[11px] font-bold text-slate-800 mt-1.5 leading-tight">Vé xem<br />phim</span>
+            </button>
+
+            {/* 7. Dịch vụ tiện ích */}
             <button 
               onClick={() => showToast('Thanh toán tiền điện, nước, internet, học phí')}
               className="flex flex-col items-center group cursor-pointer relative"
@@ -490,6 +510,11 @@ export const QuaTangVIPHome: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Hệ thống đặt vé xem phim liên rạp (CGV, Lotte, Galaxy, BHD, Beta) */}
+      {showCinemaSystem && (
+        <CinemaBookingSystem onClose={() => setShowCinemaSystem(false)} />
       )}
     </div>
   );

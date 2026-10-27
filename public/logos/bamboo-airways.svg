@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" fill="none">
+  <!-- Bamboo Airways Logo -->
+  <rect width="200" height="60" rx="8" fill="#005B41"/>
+  <!-- Bamboo Leaf Motif -->
+  <g transform="translate(14, 12)">
+    <path d="M18 4 C24 16 28 26 18 36 C10 26 12 16 18 4 Z" fill="#69BE28"/>
+    <path d="M22 10 C28 18 32 26 26 34 C20 28 20 20 22 10 Z" fill="#88D644"/>
+    <path d="M12 16 C8 24 6 30 14 36 C16 30 16 24 12 16 Z" fill="#4B8C1D"/>
+  </g>
+  <text x="56" y="27" fill="#FFFFFF" font-family="Arial, sans-serif" font-weight="900" font-size="14" letter-spacing="0.5">BAMBOO</text>
+  <text x="56" y="42" fill="#69BE28" font-family="Arial, sans-serif" font-weight="700" font-size="10.5" letter-spacing="2">AIRWAYS</text>
+</svg>

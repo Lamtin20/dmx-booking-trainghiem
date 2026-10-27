@@ -24,7 +24,8 @@ import {
   ShoppingBag,
   RotateCcw,
   Minus,
-  Plus
+  Plus,
+  Building2
 } from 'lucide-react';
 import { useDemo } from '../context/DemoContext';
 import { 
@@ -35,6 +36,8 @@ import {
 } from '../services/aiCustomerAgent';
 import { DatePickerSheet, addDays, toISO, fmtDay, diffDays } from './booking/ui';
 import { STAYS, TRANSPORTS, FLIGHTS } from '../data/catalog';
+import { AlternativeOffersCarousel } from './booking/AlternativeOffersCarousel';
+import { PayLaterConsultationModal, PayLaterPackage } from './booking/PayLaterConsultationModal';
 
 /* ------------------------------------------------------------------ */
 /* Cute Robot Avatar matching Photo 2                                 */
@@ -145,6 +148,53 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
   const [isBudgetSheetOpen, setIsBudgetSheetOpen] = useState<boolean>(false);
   const [isOptionSheetOpen, setIsOptionSheetOpen] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+
+  // PayLater modal & Alternative Offers Carousel states
+  const [isPayLaterModalOpen, setIsPayLaterModalOpen] = useState<boolean>(false);
+  const [isAlternativeSheetOpen, setIsAlternativeSheetOpen] = useState<boolean>(false);
+  const [alternativeTab, setAlternativeTab] = useState<'stay' | 'flight' | 'transport' | 'activity'>('stay');
+
+  const handleSelectAlternativeStay = (stay: any) => {
+    const lastProposalMsg = [...messages].reverse().find(m => m.proposalCard);
+    if (lastProposalMsg && lastProposalMsg.proposalCard) {
+      const prevCard = lastProposalMsg.proposalCard;
+      const newRoom = stay.rooms?.[0];
+      const newPrice = newRoom?.pricePerNight || 1500000;
+      
+      const updatedCard: TravelProposalCardData = {
+        ...prevCard,
+        resortName: stay.name,
+        resortImage: stay.coverImage,
+        stars: stay.stars || 4,
+        roomName: newRoom?.name || 'Deluxe King',
+        amenitiesHighlight: stay.amenities?.slice(0, 3).join(', ') || prevCard.amenitiesHighlight,
+        baseStayPerNight: newPrice
+      };
+
+      const recalculated = AiCustomerAgentService.recalculateProposalForDays(updatedCard, updatedCard.durationDays);
+      setMessages(prev => prev.map(m => m.id === lastProposalMsg.id ? { ...m, proposalCard: recalculated } : m));
+      if (activeProposalModal?.id === prevCard.id) {
+        setActiveProposalModal(recalculated);
+      }
+      setIsAlternativeSheetOpen(false);
+      showToast(`Đã đổi sang ${stay.name} (${recalculated.totalEstimateFormatted})!`);
+    }
+  };
+
+  const handleSelectAlternativeFlight = (flight: any) => {
+    showToast(`Đã chọn chuyến bay ${flight.airline} (${flight.flightNumber}) lúc ${flight.departureTime}!`);
+    setIsAlternativeSheetOpen(false);
+  };
+
+  const handleSelectAlternativeTransport = (trans: any) => {
+    showToast(`Đã chọn xe ${trans.operator} lúc ${trans.departureTime}!`);
+    setIsAlternativeSheetOpen(false);
+  };
+
+  const handleSelectPayLaterPackage = (pkg: PayLaterPackage) => {
+    setIsPayLaterModalOpen(false);
+    handleSendMessage(`Gói ${pkg.destinationName} (${pkg.monthly12.toLocaleString('vi-VN')}đ/tháng)`);
+  };
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -336,7 +386,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
-                  onOpenCart();
+                  setIsPayLaterModalOpen(true);
                 }}
                 className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-medium text-slate-700 cursor-pointer"
               >
@@ -414,7 +464,7 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
 
                   <button
                     onClick={() => {
-                      if (msg.actionCard?.type === 'paylater') onOpenCart();
+                      if (msg.actionCard?.type === 'paylater') setIsPayLaterModalOpen(true);
                       else if (msg.actionCard?.type === 'support') setActiveTab('support');
                       else onOpenCart();
                     }}
@@ -600,6 +650,20 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
                       <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                     </button>
 
+                    {/* Nút Cuộn ngang đổi phòng & chuyến đi */}
+                    <button
+                      data-testid="alt-offers-btn"
+                      onClick={() => {
+                        setAlternativeTab('stay');
+                        setIsAlternativeSheetOpen(true);
+                      }}
+                      className="w-full py-2.5 px-3 rounded-2xl bg-sky-50 hover:bg-sky-100 text-[#0071AF] font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-sky-200 shadow-2xs"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>Đổi Khách Sạn / Hãng Bay / Xe (20+ Lựa chọn)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+
                     {/* Link Chỉnh ngân sách */}
                     <button
                       onClick={() => setIsBudgetSheetOpen(true)}
@@ -613,21 +677,32 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
 
               {/* Quick Action Pills bên dưới Card (Chuẩn Ảnh 2) */}
               {msg.proposalCard && (
-                <div className="ml-1 sm:ml-9 flex items-center gap-2 pt-1">
+                <div className="ml-1 sm:ml-9 flex flex-wrap items-center gap-2 pt-1">
                   <button
                     onClick={() => setIsDatePickerOpen(true)}
-                    className="bg-white border border-sky-200 hover:border-[#0071AF] text-[#0071AF] hover:bg-sky-50 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                    className="bg-white border border-sky-200 hover:border-[#0071AF] text-[#0071AF] hover:bg-sky-50 px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
                   >
                     <Calendar className="w-3.5 h-3.5 text-[#0071AF]" />
                     <span>Chọn ngày đi</span>
                   </button>
 
                   <button
-                    onClick={() => setIsOptionSheetOpen(true)}
-                    className="bg-white border border-sky-200 hover:border-[#0071AF] text-[#0071AF] hover:bg-sky-50 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                    onClick={() => {
+                      setAlternativeTab('stay');
+                      setIsAlternativeSheetOpen(true);
+                    }}
+                    className="bg-white border border-sky-200 hover:border-[#0071AF] text-[#0071AF] hover:bg-sky-50 px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
                   >
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-[#0071AF]" />
-                    <span>Thêm lựa chọn</span>
+                    <Building2 className="w-3.5 h-3.5 text-[#0071AF]" />
+                    <span>Đổi phòng (~20 KS)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsPayLaterModalOpen(true)}
+                    className="bg-white border border-amber-300 hover:border-amber-500 text-amber-800 hover:bg-amber-50 px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Ví MWG PayLater (0% lãi)</span>
                   </button>
                 </div>
               )}
@@ -825,7 +900,11 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
               </div>
 
               {/* Đặc quyền Trả Chậm Ví MWG PayLater 0% */}
-              <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3.5 space-y-2">
+              <div 
+                onClick={() => setIsPayLaterModalOpen(true)}
+                className="bg-sky-50 hover:bg-sky-100/70 border border-sky-200 rounded-2xl p-3.5 space-y-2 cursor-pointer transition"
+                title="Bấm để xem chi tiết hạn mức & gói ưu đãi PayLater"
+              >
                 <div className="flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-[#0071AF]" />
                   <span className="font-bold text-xs text-slate-900">Trả góp qua Ví MWG PayLater (0% Lãi suất)</span>
@@ -974,6 +1053,53 @@ export const AiPlannerView: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart
           </div>
         </div>
       )}
+
+      {/* ============================================================ */}
+      {/* 8. Alternative Offers Sheet (Cuộn ngang chọn offer thay thế)   */}
+      {/* ============================================================ */}
+      {isAlternativeSheetOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
+            <div className="p-4 px-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+              <div>
+                <h3 className="font-black text-sm sm:text-base text-slate-900">
+                  Lựa chọn thay thế tại {discoveryCtx.destinationName || 'điểm đến'}
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Hơn 20 khách sạn/resort, chuyến bay có logo hãng bay &amp; xe FUTA
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAlternativeSheetOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto">
+              <AlternativeOffersCarousel
+                destinationId={discoveryCtx.destinationId || 'phuquoc'}
+                destinationName={discoveryCtx.destinationName || 'Phú Quốc'}
+                initialTab={alternativeTab}
+                onSelectStay={handleSelectAlternativeStay}
+                onSelectFlight={handleSelectAlternativeFlight}
+                onSelectTransport={handleSelectAlternativeTransport}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* 9. Modal Tư Vấn & Gói Hỗ Trợ Ví MWG PayLater                */}
+      {/* ============================================================ */}
+      <PayLaterConsultationModal
+        isOpen={isPayLaterModalOpen}
+        onClose={() => setIsPayLaterModalOpen(false)}
+        currentAmount={activeProposalModal?.totalEstimate || 18600000}
+        onSelectPackage={handleSelectPayLaterPackage}
+      />
     </div>
   );
 };

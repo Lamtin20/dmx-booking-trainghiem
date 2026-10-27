@@ -128,19 +128,17 @@ export class AiCustomerAgentService {
   }
 
   /**
-   * Tạo lời chào ban đầu hấp dẫn chuẩn yêu cầu:
-   * "Trải nghiệm trước, thanh toán sau với Ví MWG PayLater, ngoài ra còn rất nhiều ưu đãi..."
+   * Tạo lời chào ban đầu tinh gọn, không hiển thị điểm Quà Tặng VIP, nổi bật PayLater
    */
   public static getInitialGreeting(persona: UserPersona): AgentChatMessage {
     return {
       id: 'msg_welcome',
       sender: 'agent',
-      text: `Dạ em chào **${persona.honorific} ${persona.shortName}**! Em là **Trợ lý du lịch AI** của Điện Máy Xanh trên Quà Tặng VIP.\n\n` +
+      text: `Dạ em chào **${persona.honorific} ${persona.shortName}**! Em là **Trợ lý du lịch AI** của Điện Máy Xanh.\n\n` +
         `⚡ **Trải nghiệm trước, thanh toán sau với Ví MWG PayLater**:\n` +
-        `• Đặt vé & giữ phòng thanh toán **0đ hôm nay**, trả chậm **3, 6, 9, 12 tháng** với **0% lãi suất**.\n` +
-        `• Giảm thêm **10%** với điểm Quà Tặng VIP (${persona.pointBalance.toLocaleString('vi-VN')} điểm khả dụng) + Tặng phiếu mua sắm **100.000đ** tại Điện Máy Xanh!\n` +
-        `• Hệ thống hỗ trợ đặt vé xe Phương Trang FUTA, vé máy bay & khách sạn toàn quốc.\n\n` +
-        `Hôm nay ${persona.honorific} muốn vi vu ở đâu ạ? Em sẵn sàng thiết kế trọn gói vừa vặn ngân sách cho ${persona.honorific} nhé!`,
+        `• Hôm nay trả **0đ**, duyệt hạn mức đến **30.000.000đ**, trả chậm 0% lãi suất.\n` +
+        `• Đầy đủ vé máy bay, vé xe Phương Trang FUTA & khách sạn trên toàn quốc.\n\n` +
+        `${persona.honorific} dự định vi vu ở đâu để em gợi ý lịch trình và chi phí vừa vặn nhất ạ?`,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       // Ban đầu chỉ hiển thị những địa điểm có nhiều lựa chọn nhất & nổi bật nhất
       suggestedChips: [
@@ -149,7 +147,7 @@ export class AiCustomerAgentService {
         '🏖️ Đi Đà Nẵng',
         '🌊 Đi Nha Trang',
         '⛰️ Đi Sa Pa',
-        '💳 Ví MWG PayLater trả góp'
+        '💳 Xem ưu đãi Ví MWG PayLater'
       ]
     };
   }
@@ -537,25 +535,155 @@ export class AiCustomerAgentService {
         response: {
           id: `msg_agent_${Date.now()}`,
           sender: 'agent',
-          text: `Dạ thưa **${h} ${n}**, về chương trình **Ví MWG PayLater** trên Điện Máy Xanh & Quà Tặng VIP:\n\n` +
-            `⚡ **Thanh toán FULL 100% ngay lập tức**: Ví MWG PayLater sẽ ứng trước 100% giá trị đơn hàng để xuất vé và giữ phòng cho **${h}** ngay lập tức.\n\n` +
-            `🗓️ **4 Kỳ hạn linh hoạt**: **3, 6, 9, 12 tháng** (0% lãi suất, phí chuyển đổi 0đ).\n` +
-            `🛡️ **Đặc quyền**: Hôm nay **${h}** thanh toán **0đ**, kỳ đầu tiên chỉ bắt đầu sau 30 ngày!\n\n` +
-            `**${h}** có thể chọn hình thức này ngay tại bước xác nhận giỏ hàng ạ!`,
+          text: `Dạ em xin gửi **${h} ${n}** thông tin các gói **Ví MWG PayLater** được hỗ trợ ngay:\n\n` +
+            `💳 Hạn mức cấp sẵn: **30.000.000đ** (Duyệt tự động 30s với CCCD & SĐT Quà Tặng VIP).\n` +
+            `⚡ Đặc quyền: Hôm nay trả **0đ**, 0% lãi suất, kỳ hạn linh hoạt **3, 6, 9, 12 tháng**.\n\n` +
+            `Dưới đây là các gói combo du lịch & trải nghiệm được tài trợ 100% qua PayLater để **${h}** chọn ngay:`,
           timestamp: nowStr,
           actionCard: {
             type: 'paylater',
-            title: 'Ví MWG PayLater • 0% Lãi suất',
-            subtitle: 'Kỳ hạn 3, 6, 9, 12 tháng • Thanh toán full 100% đơn hàng',
-            highlight: '0đ hôm nay',
-            badge: 'Đặc quyền MWG',
-            actionLabel: 'Mở giỏ hàng thanh toán'
+            title: 'Ví MWG PayLater • Hạn mức 30.000.000đ',
+            subtitle: '0% Lãi suất • 0đ hôm nay • Trả góp chỉ từ 204.000đ/tháng',
+            highlight: 'Hỗ trợ các gói combo Phú Quốc, Đà Lạt, Tây Ninh, Nha Trang',
+            badge: 'Duyệt 30s',
+            actionLabel: 'Xem bảng tính & Ưu đãi PayLater',
+            payload: { openConsultation: true }
           },
           suggestedChips: [
-            '🏝️ Lên lịch trình Phú Quốc',
-            '🌸 Lên lịch trình Đà Lạt',
-            '💎 Tra cứu điểm Quà Tặng VIP'
+            '🏝️ Gói Phú Quốc 3N2Đ (516K/tháng)',
+            '🌸 Gói Đà Lạt Săn Mây (325K/tháng)',
+            '🚠 Gói Tây Ninh Bà Đen (204K/tháng)',
+            '🌊 Gói Nha Trang Biển Xanh (450K/tháng)'
           ]
+        }
+      };
+    }
+
+    // Xử lý khi khách bấm trực tiếp chọn gói PayLater cụ thể
+    if (raw.includes('516') || (raw.includes('phú quốc') && raw.includes('tháng')) || raw.includes('gói phú quốc')) {
+      const pkgCtx: DiscoveryContext = {
+        destinationId: 'phuquoc',
+        destinationName: 'Phú Quốc',
+        pax: 2,
+        paxText: '2 người',
+        adults: 2,
+        children: 0,
+        durationDays: 3,
+        durationNights: 2,
+        budget: 6200000,
+        budgetText: '6,2 triệu',
+        step: 'complete'
+      };
+      const proposal = this.generateProposalData(pkgCtx);
+      proposal.packageTitle = 'Combo Phú Quốc 3N2Đ Vinpearl Resort 5★ & Vé Máy Bay';
+      proposal.resortName = 'Vinpearl Resort & Spa Phú Quốc';
+      return {
+        newContext: pkgCtx,
+        response: {
+          id: `msg_agent_${Date.now()}`,
+          sender: 'agent',
+          text: `Em đã áp dụng gói **Combo Phú Quốc 3N2Đ** tài trợ 100% qua **Ví MWG PayLater** cho **${h} ${n}**!\n\n` +
+            `⚡ Trả góp 12 tháng chỉ **516.000đ/tháng** (0% lãi suất, 0đ trả trước hôm nay).`,
+          timestamp: nowStr,
+          userSummaryBadge: 'Phú Quốc · 2 người · 3 ngày · PayLater 516K/tháng',
+          proposalCard: proposal,
+          suggestedChips: this.getContextualChipsForDestination('Phú Quốc', 'complete')
+        }
+      };
+    }
+
+    if (raw.includes('325') || (raw.includes('đà lạt') && raw.includes('tháng')) || raw.includes('gói đà lạt')) {
+      const pkgCtx: DiscoveryContext = {
+        destinationId: 'dalat',
+        destinationName: 'Đà Lạt',
+        pax: 2,
+        paxText: '2 người',
+        adults: 2,
+        children: 0,
+        durationDays: 3,
+        durationNights: 2,
+        budget: 3900000,
+        budgetText: '3,9 triệu',
+        step: 'complete'
+      };
+      const proposal = this.generateProposalData(pkgCtx);
+      proposal.packageTitle = 'Combo Đà Lạt Săn Mây 3N2Đ Hôtel Colline 4★ & Limousine VIP';
+      proposal.resortName = 'Hôtel Colline Đà Lạt';
+      return {
+        newContext: pkgCtx,
+        response: {
+          id: `msg_agent_${Date.now()}`,
+          sender: 'agent',
+          text: `Em đã áp dụng gói **Combo Đà Lạt Săn Mây 3N2Đ** tài trợ qua **Ví MWG PayLater** cho **${h} ${n}**!\n\n` +
+            `⚡ Trả góp 12 tháng chỉ **325.000đ/tháng** (0% lãi suất, 0đ trả trước hôm nay).`,
+          timestamp: nowStr,
+          userSummaryBadge: 'Đà Lạt · 2 người · 3 ngày · PayLater 325K/tháng',
+          proposalCard: proposal,
+          suggestedChips: this.getContextualChipsForDestination('Đà Lạt', 'complete')
+        }
+      };
+    }
+
+    if (raw.includes('204') || (raw.includes('tây ninh') && raw.includes('tháng')) || raw.includes('gói tây ninh')) {
+      const pkgCtx: DiscoveryContext = {
+        destinationId: 'tayninh',
+        destinationName: 'Tây Ninh',
+        pax: 2,
+        paxText: '2 người',
+        adults: 2,
+        children: 0,
+        durationDays: 2,
+        durationNights: 1,
+        budget: 2450000,
+        budgetText: '2,45 triệu',
+        step: 'complete'
+      };
+      const proposal = this.generateProposalData(pkgCtx);
+      proposal.packageTitle = 'Combo Tây Ninh Tâm Linh Sun World Bà Đen & Vinpearl Hotel 5★';
+      proposal.resortName = 'Melia Vinpearl Tây Ninh';
+      return {
+        newContext: pkgCtx,
+        response: {
+          id: `msg_agent_${Date.now()}`,
+          sender: 'agent',
+          text: `Em đã áp dụng gói **Combo Tây Ninh Tâm Linh 2N1Đ** tài trợ qua **Ví MWG PayLater** cho **${h} ${n}**!\n\n` +
+            `⚡ Trả góp 12 tháng chỉ **204.000đ/tháng** (0% lãi suất, 0đ trả trước hôm nay).`,
+          timestamp: nowStr,
+          userSummaryBadge: 'Tây Ninh · 2 người · 2 ngày · PayLater 204K/tháng',
+          proposalCard: proposal,
+          suggestedChips: this.getContextualChipsForDestination('Tây Ninh', 'complete')
+        }
+      };
+    }
+
+    if (raw.includes('450') || (raw.includes('nha trang') && raw.includes('tháng')) || raw.includes('gói nha trang')) {
+      const pkgCtx: DiscoveryContext = {
+        destinationId: 'nhatrang',
+        destinationName: 'Nha Trang',
+        pax: 2,
+        paxText: '2 người',
+        adults: 2,
+        children: 0,
+        durationDays: 3,
+        durationNights: 2,
+        budget: 5400000,
+        budgetText: '5,4 triệu',
+        step: 'complete'
+      };
+      const proposal = this.generateProposalData(pkgCtx);
+      proposal.packageTitle = 'Combo Nha Trang Biển Xanh 3N2Đ Mường Thanh Luxury 5★ & Vé Bay';
+      proposal.resortName = 'Mường Thanh Luxury Nha Trang';
+      return {
+        newContext: pkgCtx,
+        response: {
+          id: `msg_agent_${Date.now()}`,
+          sender: 'agent',
+          text: `Em đã áp dụng gói **Combo Nha Trang Biển Xanh 3N2Đ** tài trợ qua **Ví MWG PayLater** cho **${h} ${n}**!\n\n` +
+            `⚡ Trả góp 12 tháng chỉ **450.000đ/tháng** (0% lãi suất, 0đ trả trước hôm nay).`,
+          timestamp: nowStr,
+          userSummaryBadge: 'Nha Trang · 2 người · 3 ngày · PayLater 450K/tháng',
+          proposalCard: proposal,
+          suggestedChips: this.getContextualChipsForDestination('Nha Trang', 'complete')
         }
       };
     }

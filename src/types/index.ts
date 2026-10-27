@@ -70,6 +70,7 @@ export interface Flight {
   flightNumber: string;
   airline: 'Vietnam Airlines' | 'Vietjet Air' | 'Bamboo Airways' | 'Vietravel Airlines';
   airlineLogoText: string;
+  airlineLogo?: string;
   fromCity: string;
   fromCode: string;
   toCity: string;
